@@ -1,98 +1,205 @@
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { Bell, ChevronDown, Plus } from 'lucide-react-native';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { CategoryCard } from '@/components/features/CategoryCard';
+import { ArtisanCard } from '@/components/features/ArtisanCard';
+import { EmergencyBanner } from '@/components/features/EmergencyBanner';
+import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { SkeletonCard } from '@/components/ui/Skeleton';
+import { TabScreen } from '@/components/ui/TabScreen';
+import { useArtisans } from '@/hooks/queries/useArtisans';
+import { useNotificationStore } from '@/store/notificationStore';
+import { useAuthStore } from '@/store/authStore';
+import { useLocationStore } from '@/store/locationStore';
+import { serviceCategories } from '@/constants/categories';
+import { gradients, ThemeColors } from '@/theme/colors';
+import { useThemeColors } from '@/hooks/use-theme-colors';
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const user = useAuthStore((s) => s.user);
+  const currentAddress = useLocationStore((s) => s.currentAddress);
+  const unreadCount = useNotificationStore((s) => s.unreadCount());
+  const { data: artisans, isLoading } = useArtisans();
+  const colors = useThemeColors();
+  const styles = createStyles(colors);
+  const { t } = useTranslation();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const firstName = user?.name?.split(' ')[0] ?? 'there';
+
+  return (
+    <TabScreen routeIndex={0}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+        <LinearGradient colors={gradients.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+          <View style={styles.heroRow}>
+            <AnimatedPressable onPress={() => router.push('/(location)/saved')} style={{ flex: 1 }}>
+              <View style={styles.addressRow}>
+                <Text numberOfLines={1} style={styles.heroAddress}>
+                  {currentAddress?.line1 ?? t('home_set_location')}
+                </Text>
+                <ChevronDown size={14} color="rgba(255,255,255,0.7)" />
+              </View>
+              <Text numberOfLines={1} style={styles.heroGreeting}>{t('home_greeting')} {firstName} 👋</Text>
+            </AnimatedPressable>
+            <AnimatedPressable onPress={() => router.push('/notifications')} style={styles.bellButton}>
+              <Bell size={20} color="#FFFFFF" />
+              {unreadCount > 0 ? (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeLabel}>{unreadCount}</Text>
+                </View>
+              ) : null}
+            </AnimatedPressable>
+          </View>
+          <SearchBar onPress={() => router.push('/(tabs)/categories')} editable={false} />
+        </LinearGradient>
+
+        <View style={styles.body}>
+          <EmergencyBanner onPress={() => router.push('/jobs/emergency')} />
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t('home_popular_categories')}</Text>
+              <Text style={styles.sectionLink} onPress={() => router.push('/(tabs)/categories')}>
+                {t('home_see_all')}
+              </Text>
+            </View>
+            <View style={styles.categoryGrid}>
+              {serviceCategories.slice(0, 6).map((category) => (
+                <View key={category.id} style={{ width: '31%' }}>
+                  <CategoryCard
+                    category={category}
+                    onPress={() => router.push({ pathname: '/jobs/new/describe', params: { categoryId: category.id, categoryName: category.name } })}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t('home_nearby_artisans')}</Text>
+              <Text style={styles.sectionLink} onPress={() => router.push('/(tabs)/categories')}>
+                {t('home_see_all')}
+              </Text>
+            </View>
+            {isLoading ? (
+              <View style={{ gap: 12 }}>
+                <SkeletonCard />
+              </View>
+            ) : (
+              <GHScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {artisans?.map((artisan) => (
+                  <ArtisanCard key={artisan.id} artisan={artisan} compact onPress={() => router.push(`/artisans/${artisan.id}`)} />
+                ))}
+              </GHScrollView>
+            )}
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('home_recommended')}</Text>
+            <View style={{ gap: 12 }}>
+              {artisans?.slice(0, 2).map((artisan) => (
+                <ArtisanCard key={artisan.id} artisan={artisan} onPress={() => router.push(`/artisans/${artisan.id}`)} />
+              ))}
+            </View>
+          </View>
+
+          <LinearGradient colors={gradients.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.promoCard}>
+            <Image
+              source={{ uri: 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?w=200' }}
+              style={{ width: 56, height: 56, borderRadius: 16 }}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.promoTitle} numberOfLines={1}>
+                Upgrade to Home+
+              </Text>
+              <Text style={styles.promoSubtitle} numberOfLines={1}>
+                Priority booking & lower fees
+              </Text>
+            </View>
+            <AnimatedPressable onPress={() => router.push('/subscriptions')} style={styles.promoButton}>
+              <Text style={styles.promoButtonLabel}>View</Text>
+            </AnimatedPressable>
+          </LinearGradient>
+        </View>
+      </ScrollView>
+
+      <AnimatedPressable onPress={() => router.push('/jobs/new/category')} style={styles.fab}>
+        <Plus size={28} color="#FFFFFF" />
+      </AnimatedPressable>
+    </SafeAreaView>
+    </TabScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+function createStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
+  hero: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 32,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    gap: 20,
+  },
+  heroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  addressRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  heroAddress: { fontFamily: 'Inter_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.7)', flexShrink: 1 },
+  heroGreeting: { fontFamily: 'Inter_800ExtraBold', fontSize: 24, color: '#FFFFFF', marginTop: 4 },
+  bellButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    position: 'relative',
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  bellBadge: {
     position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: colors.danger,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-});
+  bellBadgeLabel: { fontFamily: 'Inter_700Bold', fontSize: 9, color: '#FFFFFF' },
+  body: { paddingHorizontal: 24, marginTop: 24, gap: 32 },
+  section: { gap: 12 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { fontFamily: 'Inter_700Bold', fontSize: 18, color: colors.text },
+  sectionLink: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.primary },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  promoCard: { borderRadius: 24, overflow: 'hidden', padding: 20, flexDirection: 'row', alignItems: 'center', gap: 16 },
+  promoTitle: { fontFamily: 'Inter_700Bold', fontSize: 16, color: colors.text },
+  promoSubtitle: { fontFamily: 'Inter_500Medium', fontSize: 12, color: `${colors.text}CC`, marginTop: 2 },
+  promoButton: { backgroundColor: `${colors.text}1A`, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
+  promoButtonLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.text },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    width: 64,
+    height: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#0A84FF',
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  });
+}
