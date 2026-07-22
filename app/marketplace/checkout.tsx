@@ -2,64 +2,49 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { CheckCircle2, ChevronRight, MapPin } from 'lucide-react-native';
+import { ChevronRight, MapPin, ShieldCheck } from 'lucide-react-native';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
-import Animated, { ZoomIn } from 'react-native-reanimated';
 import { BackButton } from '@/components/ui/BackButton';
 import { Button } from '@/components/ui/Button';
-import { PaymentCard } from '@/components/features/PaymentCard';
+import { useToast } from '@/components/ui/Toast';
 import { useMarketplaceStore } from '@/store/marketplaceStore';
-import { usePaymentStore } from '@/store/paymentStore';
 import { useLocationStore } from '@/store/locationStore';
+import { useInitializePaystack } from '@/hooks/queries/usePayments';
 import { formatCurrency } from '@/utils/format';
 import { ThemeColors } from '@/theme/colors';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 
 export default function CheckoutScreen() {
   const cart = useMarketplaceStore((s) => s.cart);
-  const placeOrderInStore = useMarketplaceStore((s) => s.placeOrder);
-  const methods = usePaymentStore((s) => s.methods);
-  const selectedMethodId = usePaymentStore((s) => s.selectedMethodId);
-  const selectMethod = usePaymentStore((s) => s.selectMethod);
   const currentAddress = useLocationStore((s) => s.currentAddress);
+  const initializePaystack = useInitializePaystack();
+  const toast = useToast();
   const colors = useThemeColors();
   const styles = createStyles(colors);
-  const [placed, setPlaced] = useState(false);
   const [orderId] = useState(`order-${Date.now()}`);
 
   const subtotal = cart.reduce((sum, item) => sum + item.material.price * item.quantity, 0);
   const delivery = 25;
   const total = subtotal + delivery;
 
-  function placeOrder() {
-    placeOrderInStore({
-      id: orderId,
-      items: cart,
-      subtotal,
-      delivery,
-      total,
-      address: currentAddress?.line1 ?? 'Set delivery address',
-      status: 'preparing',
-      createdAt: new Date().toISOString(),
-    });
-    setPlaced(true);
-  }
-
-  if (placed) {
-    return (
-      <SafeAreaView style={styles.successScreen}>
-        <View style={styles.successCenter}>
-          <Animated.View entering={ZoomIn.springify()} style={styles.successIcon}>
-            <CheckCircle2 size={48} color={colors.success} />
-          </Animated.View>
-          <View style={{ alignItems: 'center', gap: 8, paddingHorizontal: 24 }}>
-            <Text style={styles.successTitle}>Order Placed!</Text>
-            <Text style={styles.successSubtitle}>Your materials are being prepared for delivery.</Text>
-          </View>
-        </View>
-        <Button label="Track Delivery" size="lg" onPress={() => router.replace(`/marketplace/delivery/${orderId}`)} />
-      </SafeAreaView>
-    );
+  async function handlePay() {
+    try {
+      const { authorizationUrl, reference } = await initializePaystack.mutateAsync({ purpose: 'MARKETPLACE_ORDER', amount: total });
+      router.push({
+        pathname: '/payments/paystack-checkout',
+        params: {
+          authorizationUrl,
+          reference,
+          marketplaceOrderId: orderId,
+          marketplaceSubtotal: String(subtotal),
+          marketplaceDelivery: String(delivery),
+          marketplaceTotal: String(total),
+          marketplaceAddress: currentAddress?.line1 ?? 'Set delivery address',
+        },
+      });
+    } catch (error: any) {
+      toast.show(error?.response?.data?.message ?? 'Could not start the payment. Please try again.', 'error');
+    }
   }
 
   return (
@@ -84,15 +69,21 @@ export default function CheckoutScreen() {
           <Row label="Total" value={formatCurrency(total)} bold />
         </View>
 
-        <View style={{ gap: 12 }}>
-          <Text style={styles.sectionTitle}>Payment Method</Text>
-          {methods.map((method) => (
-            <PaymentCard key={method.id} method={method} selected={selectedMethodId === method.id} onPress={() => selectMethod(method.id)} />
-          ))}
+        <View style={styles.paystackBanner}>
+          <ShieldCheck size={20} color={colors.primary} />
+          <Text style={styles.paystackText}>
+            Choose card, mobile money, or bank transfer on Paystack's secure checkout — METIZO never sees your
+            payment details.
+          </Text>
         </View>
       </ScrollView>
       <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
-        <Button label={`Place Order · ${formatCurrency(total)}`} size="lg" onPress={placeOrder} />
+        <Button
+          label={`Pay ${formatCurrency(total)} Securely`}
+          size="lg"
+          loading={initializePaystack.isPending}
+          onPress={handlePay}
+        />
       </View>
     </SafeAreaView>
   );
@@ -112,21 +103,17 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
-    successScreen: { flex: 1, backgroundColor: colors.background, justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 40 },
-    successCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 24 },
-    successIcon: { width: 96, height: 96, borderRadius: 48, backgroundColor: `${colors.success}1A`, alignItems: 'center', justifyContent: 'center' },
-    successTitle: { fontFamily: 'Inter_800ExtraBold', fontSize: 24, color: colors.text, textAlign: 'center' },
-    successSubtitle: { fontFamily: 'Inter_400Regular', fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
     header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24, paddingTop: 8 },
     headerTitle: { fontFamily: 'Inter_700Bold', fontSize: 18, color: colors.text },
     addressRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.card, borderRadius: 16, padding: 16 },
     addressText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.text },
     summaryCard: { backgroundColor: colors.card, borderRadius: 16, padding: 20, gap: 8 },
-    sectionTitle: { fontFamily: 'Inter_700Bold', fontSize: 16, color: colors.text },
     row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     rowLabel: { fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.textSecondary },
     rowValue: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.text },
     rowValueBold: { fontFamily: 'Inter_700Bold', fontSize: 16, color: colors.text },
     divider: { height: 1, backgroundColor: colors.background, marginVertical: 4 },
+    paystackBanner: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, backgroundColor: `${colors.primary}0D`, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: `${colors.primary}1A` },
+    paystackText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
   });
 }

@@ -55,7 +55,7 @@ export interface EscrowRecord {
   paidAt: string | null;
 }
 
-export type PaystackPurpose = 'ESCROW' | 'WALLET_TOPUP';
+export type PaystackPurpose = 'ESCROW' | 'WALLET_TOPUP' | 'MARKETPLACE_ORDER';
 
 export interface PaystackInitResult {
   authorizationUrl: string;

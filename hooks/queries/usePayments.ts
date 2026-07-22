@@ -11,8 +11,12 @@ export function useEscrow(requestId?: string) {
 
 export function useInitializePaystack() {
   return useMutation({
-    mutationFn: (input: { purpose: 'ESCROW'; requestId: string } | { purpose: 'WALLET_TOPUP'; amount: number }) =>
-      paymentService.initializePaystack(input),
+    mutationFn: (
+      input:
+        | { purpose: 'ESCROW'; requestId: string }
+        | { purpose: 'WALLET_TOPUP'; amount: number }
+        | { purpose: 'MARKETPLACE_ORDER'; amount: number }
+    ) => paymentService.initializePaystack(input),
   });
 }
 

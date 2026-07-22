@@ -7,6 +7,7 @@ import { BackButton } from '@/components/ui/BackButton';
 import { useToast } from '@/components/ui/Toast';
 import { useVerifyPaystack } from '@/hooks/queries/usePayments';
 import { usePaymentStore } from '@/store/paymentStore';
+import { useMarketplaceStore } from '@/store/marketplaceStore';
 import { formatCurrency } from '@/utils/format';
 import { ThemeColors } from '@/theme/colors';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -18,13 +19,29 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 const CALLBACK_MARKER = 'standard.paystack.co/close';
 
 export default function PaystackCheckoutScreen() {
-  const { authorizationUrl, reference, requestId } = useLocalSearchParams<{
+  const {
+    authorizationUrl,
+    reference,
+    requestId,
+    marketplaceOrderId,
+    marketplaceSubtotal,
+    marketplaceDelivery,
+    marketplaceTotal,
+    marketplaceAddress,
+  } = useLocalSearchParams<{
     authorizationUrl: string;
     reference: string;
     requestId?: string;
+    marketplaceOrderId?: string;
+    marketplaceSubtotal?: string;
+    marketplaceDelivery?: string;
+    marketplaceTotal?: string;
+    marketplaceAddress?: string;
   }>();
   const verifyPaystack = useVerifyPaystack();
   const topUpWallet = usePaymentStore((s) => s.topUpWallet);
+  const cart = useMarketplaceStore((s) => s.cart);
+  const placeMarketplaceOrder = useMarketplaceStore((s) => s.placeOrder);
   const toast = useToast();
   const colors = useThemeColors();
   const styles = createStyles(colors);
@@ -39,6 +56,19 @@ export default function PaystackCheckoutScreen() {
         topUpWallet(result.amount);
         toast.show(`${formatCurrency(result.amount)} added to your wallet`, 'success');
         router.back();
+      } else if (result.purpose === 'MARKETPLACE_ORDER' && marketplaceOrderId) {
+        placeMarketplaceOrder({
+          id: marketplaceOrderId,
+          items: cart,
+          subtotal: Number(marketplaceSubtotal ?? 0),
+          delivery: Number(marketplaceDelivery ?? 0),
+          total: Number(marketplaceTotal ?? result.amount),
+          address: marketplaceAddress ?? 'Set delivery address',
+          status: 'preparing',
+          createdAt: new Date().toISOString(),
+        });
+        toast.show('Payment successful — your order is being prepared!', 'success');
+        router.replace(`/marketplace/delivery/${marketplaceOrderId}`);
       } else {
         toast.show('Payment secured — funds are held safely in escrow.', 'success');
         router.replace(`/tracking/${result.requestId ?? requestId}`);

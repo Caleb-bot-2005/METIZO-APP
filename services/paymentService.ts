@@ -3,7 +3,10 @@ import { mockDelay } from './mockDelay';
 import { env } from '@/config/env';
 import { EscrowRecord, PaystackInitResult, PaystackPurpose, PaystackVerifyResult } from '@/types/payment';
 
-type InitializeInput = { purpose: 'ESCROW'; requestId: string } | { purpose: 'WALLET_TOPUP'; amount: number };
+type InitializeInput =
+  | { purpose: 'ESCROW'; requestId: string }
+  | { purpose: 'WALLET_TOPUP'; amount: number }
+  | { purpose: 'MARKETPLACE_ORDER'; amount: number };
 
 // Escrow is created automatically server-side when a bid is accepted (see
 // authService's note on the real accept-bid flow) — this screen only reads
@@ -42,7 +45,7 @@ export const paymentService = {
     const body =
       input.purpose === 'ESCROW'
         ? { purpose: 'ESCROW' as PaystackPurpose, requestId: Number(input.requestId) }
-        : { purpose: 'WALLET_TOPUP' as PaystackPurpose, amount: input.amount };
+        : { purpose: input.purpose as PaystackPurpose, amount: input.amount };
     const { data } = await apiClient.post<PaystackInitResult>('/payments/paystack/initialize', body);
     return data;
   },
