@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Polygon } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import Animated, {
   Easing,
@@ -16,14 +15,15 @@ import Animated, {
 
 import { useAuthStore } from '@/store/authStore';
 import { useLocationStore } from '@/store/locationStore';
-import { gradients } from '@/theme/colors';
 import { logoMetrics } from '@/components/ui/Logo';
 import { getHomeRoute } from '@/utils/navigation';
 
 const SPLASH_DURATION = 3000;
 const LOGO_SIZE = 84;
-const U = LOGO_SIZE / logoMetrics.MARK_WIDTH;
-const MARK_HEIGHT = logoMetrics.MARK_HEIGHT * U;
+const GLYPH_WIDTH = LOGO_SIZE * logoMetrics.GLYPH_TO_MARK_WIDTH;
+const GLYPH_HEIGHT = GLYPH_WIDTH / logoMetrics.GLYPH_ASPECT;
+const DOT_SIZE = GLYPH_WIDTH * logoMetrics.DOT_TO_GLYPH_WIDTH;
+const MARK_HEIGHT = GLYPH_HEIGHT + DOT_SIZE;
 
 export default function SplashScreen() {
   const hasOnboarded = useAuthStore((s) => s.hasOnboarded);
@@ -31,13 +31,9 @@ export default function SplashScreen() {
   const userRole = useAuthStore((s) => s.user?.role);
   const permissionGranted = useLocationStore((s) => s.permissionGranted);
 
-  // Logo piece-by-piece build
-  const thickY = useSharedValue(36);
-  const thickOpacity = useSharedValue(0);
-  const thinY = useSharedValue(-28);
-  const thinOpacity = useSharedValue(0);
-  const triScale = useSharedValue(0);
-  const triOpacity = useSharedValue(0);
+  // Logo build: glyph pops in, then the dot flourishes in with a spin
+  const glyphScale = useSharedValue(0.7);
+  const glyphOpacity = useSharedValue(0);
   const dotScale = useSharedValue(0);
   const dotOpacity = useSharedValue(0);
   const dotRotate = useSharedValue(-90);
@@ -59,17 +55,9 @@ export default function SplashScreen() {
   const wave3 = useSharedValue(0.3);
 
   useEffect(() => {
-    // Outer bars rise into place
-    thickOpacity.value = withTiming(1, { duration: 320 });
-    thickY.value = withSpring(0, { damping: 9, stiffness: 160 });
-
-    // Inner bars drop into place, just after
-    thinOpacity.value = withDelay(220, withTiming(1, { duration: 320 }));
-    thinY.value = withDelay(220, withSpring(0, { damping: 9, stiffness: 160 }));
-
-    // Triangle pops in
-    triOpacity.value = withDelay(500, withTiming(1, { duration: 250 }));
-    triScale.value = withDelay(500, withSpring(1, { damping: 6, stiffness: 220 }));
+    // Glyph pops into place
+    glyphOpacity.value = withTiming(1, { duration: 320 });
+    glyphScale.value = withSpring(1, { damping: 9, stiffness: 160 });
 
     // Dot flourishes in with a spin
     dotOpacity.value = withDelay(720, withTiming(1, { duration: 250 }));
@@ -120,9 +108,7 @@ export default function SplashScreen() {
   }, [hasOnboarded, isAuthenticated, permissionGranted, userRole]);
 
   const groupStyle = useAnimatedStyle(() => ({ transform: [{ scale: groupScale.value }] }));
-  const thickBarStyle = useAnimatedStyle(() => ({ opacity: thickOpacity.value, transform: [{ translateY: thickY.value }] }));
-  const thinBarStyle = useAnimatedStyle(() => ({ opacity: thinOpacity.value, transform: [{ translateY: thinY.value }] }));
-  const triStyle = useAnimatedStyle(() => ({ opacity: triOpacity.value, transform: [{ scale: triScale.value }] }));
+  const glyphStyle = useAnimatedStyle(() => ({ opacity: glyphOpacity.value, transform: [{ scale: glyphScale.value }] }));
   const dotStyle = useAnimatedStyle(() => ({
     opacity: dotOpacity.value,
     transform: [{ scale: dotScale.value }, { rotate: `${dotRotate.value}deg` }],
@@ -147,73 +133,28 @@ export default function SplashScreen() {
   const wave2Style = useAnimatedStyle(() => ({ opacity: wave2.value, transform: [{ scale: 0.7 + wave2.value * 0.3 }] }));
   const wave3Style = useAnimatedStyle(() => ({ opacity: wave3.value, transform: [{ scale: 0.7 + wave3.value * 0.3 }] }));
 
-  const m = logoMetrics;
-
   return (
-    <LinearGradient colors={gradients.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ flex: 1 }}>
+    <View style={styles.screen}>
       <View style={styles.center}>
         <View style={styles.ringStack}>
           <Animated.View style={[styles.ring, ring1Style]} />
           <Animated.View style={[styles.ring, ring2Style]} />
 
           <Animated.View style={[{ width: LOGO_SIZE, height: MARK_HEIGHT }, groupStyle]}>
-            <Animated.View
-              style={[
-                styles.thickBar,
-                thickBarStyle,
-                { left: m.LEFT_THICK_X * U, top: m.DOT_R * U, width: m.THICK_W * U, height: m.FULL_H * U, borderTopLeftRadius: (m.THICK_W * U) / 2, borderTopRightRadius: (m.THICK_W * U) / 2 },
-              ]}
-            />
-            <Animated.View
-              style={[
-                styles.thinBar,
-                thinBarStyle,
-                { left: m.LEFT_THIN_X * U, top: m.DOT_R * U, width: m.THIN_W * U, height: m.SHORT_H * U, borderRadius: (m.THIN_W * U) / 2 },
-              ]}
-            />
-            <Animated.View
-              style={[
-                triStyle,
-                {
-                  position: 'absolute',
-                  left: (m.LEFT_THIN_X + m.THIN_W) * U,
-                  top: m.DOT_R * U,
-                  width: m.GAP_MID * U,
-                  height: 50 * U,
-                },
-              ]}>
-              <Svg width={m.GAP_MID * U} height={50 * U} viewBox={`0 0 ${m.GAP_MID} 50`}>
-                <Polygon points={`0,0 ${m.GAP_MID},0 ${m.GAP_MID / 2},50`} fill="#FFFFFF" />
-              </Svg>
+            <Animated.View style={[glyphStyle, { position: 'absolute', left: 0, top: DOT_SIZE, width: GLYPH_WIDTH, height: GLYPH_HEIGHT }]}>
+              <Image
+                source={require('@/assets/images/logo-glyph.png')}
+                tintColor="#0A84FF"
+                style={{ width: GLYPH_WIDTH, height: GLYPH_HEIGHT }}
+              />
             </Animated.View>
-            <Animated.View
-              style={[
-                styles.thinBar,
-                thinBarStyle,
-                { left: m.RIGHT_THIN_X * U, top: m.DOT_R * U, width: m.THIN_W * U, height: m.SHORT_H * U, borderRadius: (m.THIN_W * U) / 2 },
-              ]}
-            />
-            <Animated.View
-              style={[
-                styles.thickBar,
-                thickBarStyle,
-                { left: m.RIGHT_THICK_X * U, top: m.DOT_R * U, width: m.THICK_W * U, height: m.FULL_H * U, borderTopLeftRadius: (m.THICK_W * U) / 2, borderTopRightRadius: (m.THICK_W * U) / 2 },
-              ]}
-            />
-            <Animated.View
-              style={[
-                dotStyle,
-                {
-                  position: 'absolute',
-                  left: (m.RIGHT_THICK_X + m.THICK_W - m.DOT_R * 0.6) * U,
-                  top: 0,
-                  width: m.DOT_R * 2 * U,
-                  height: m.DOT_R * 2 * U,
-                  borderRadius: m.DOT_R * U,
-                  backgroundColor: '#FACC15',
-                },
-              ]}
-            />
+            <Animated.View style={[dotStyle, { position: 'absolute', left: GLYPH_WIDTH, top: 0, width: DOT_SIZE, height: DOT_SIZE }]}>
+              <Image
+                source={require('@/assets/images/logo-dot.png')}
+                tintColor="#FACC15"
+                style={{ width: DOT_SIZE, height: DOT_SIZE }}
+              />
+            </Animated.View>
           </Animated.View>
 
           <View pointerEvents="none" style={[styles.shineClip, { width: LOGO_SIZE, height: MARK_HEIGHT }]}>
@@ -229,33 +170,36 @@ export default function SplashScreen() {
           <Animated.View style={[styles.loadingDot, wave3Style]} />
         </View>
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Matches the native splash background (app.json's expo-splash-screen config)
+  // so the handoff from native splash to this animated one is seamless.
+  screen: { flex: 1, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  ringStack: { width: LOGO_SIZE + 40, height: MARK_HEIGHT + 40, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  ringStack: { width: LOGO_SIZE + 40, height: LOGO_SIZE + 40, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   ring: {
+    // Padded well past the mark's own corner-to-center distance so the ring
+    // never visually cuts through the logo, even at its smallest pulse frame.
     position: 'absolute',
-    width: LOGO_SIZE + 16,
-    height: LOGO_SIZE + 16,
-    borderRadius: (LOGO_SIZE + 16) / 2,
+    width: LOGO_SIZE + 34,
+    height: LOGO_SIZE + 34,
+    borderRadius: (LOGO_SIZE + 34) / 2,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.7)',
+    borderColor: 'rgba(10,132,255,0.35)',
   },
-  thickBar: { position: 'absolute', backgroundColor: '#FFFFFF' },
-  thinBar: { position: 'absolute', backgroundColor: '#FFFFFF' },
   shineClip: { position: 'absolute', overflow: 'hidden' },
   shine: {
     position: 'absolute',
     top: -20,
     bottom: -20,
     width: 18,
-    backgroundColor: 'rgba(255,255,255,0.55)',
+    backgroundColor: 'rgba(10,132,255,0.2)',
   },
-  title: { fontFamily: 'Inter_800ExtraBold', fontSize: 30, color: '#FFFFFF', letterSpacing: 1 },
-  subtitle: { fontFamily: 'Inter_500Medium', fontSize: 14, color: 'rgba(255,255,255,0.7)' },
+  title: { fontFamily: 'Inter_800ExtraBold', fontSize: 30, color: '#0F172A', letterSpacing: 1 },
+  subtitle: { fontFamily: 'Inter_500Medium', fontSize: 14, color: '#6B7280' },
   dotsRow: { flexDirection: 'row', gap: 8, marginTop: 20 },
-  loadingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
+  loadingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#0A84FF' },
 });

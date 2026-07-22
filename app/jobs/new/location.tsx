@@ -1,9 +1,11 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapView, Marker } from '@/components/ui/AppMap';
 import type { MapPressEvent } from '@/components/ui/AppMap';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { Briefcase, Home, MapPin } from 'lucide-react-native';
+import { LocateFixed, MapPin, Search } from 'lucide-react-native';
 import { StepProgress } from '@/components/ui/StepProgress';
 import { Button } from '@/components/ui/Button';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
@@ -13,16 +15,55 @@ import { useLocationStore } from '@/store/locationStore';
 import { ThemeColors } from '@/theme/colors';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 
-const labelIcons = { Home, Work: Briefcase, Other: MapPin };
-
 export default function JobLocationStep() {
   const draft = useJobStore((s) => s.draft);
   const updateDraft = useJobStore((s) => s.updateDraft);
   const currentAddress = useLocationStore((s) => s.currentAddress);
-  const savedAddresses = useLocationStore((s) => s.savedAddresses);
   const toast = useToast();
   const colors = useThemeColors();
   const styles = createStyles(colors);
+  const [locating, setLocating] = useState(false);
+  const [pinning, setPinning] = useState(false);
+
+  // Tapping the map is how the customer fine-tunes a search result down to
+  // the exact building — reverse-geocoding here keeps the address text honest
+  // about where the pin actually is, instead of showing a stale search label.
+  async function handleMapPress(e: MapPressEvent) {
+    const { latitude, longitude } = e.nativeEvent.coordinate;
+    updateDraft({ latitude, longitude });
+    setPinning(true);
+    try {
+      const [place] = await Location.reverseGeocodeAsync({ latitude, longitude }).catch(() => []);
+      const address = place
+        ? [place.street, place.name].filter((v, i, arr) => v && arr.indexOf(v) === i).join(', ') || place.district || 'Dropped pin'
+        : 'Dropped pin';
+      updateDraft({ address });
+    } finally {
+      setPinning(false);
+    }
+  }
+
+  async function useCurrentLocation() {
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        toast.show('Location permission denied. Try searching for the address instead.', 'error');
+        return;
+      }
+      const position = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = position.coords;
+      const [place] = await Location.reverseGeocodeAsync({ latitude, longitude }).catch(() => []);
+      const address = place
+        ? [place.street, place.name].filter((v, i, arr) => v && arr.indexOf(v) === i).join(', ') || place.district || 'Current location'
+        : 'Current location';
+      updateDraft({ latitude, longitude, address });
+    } catch {
+      toast.show('Could not fetch your location. Please try again.', 'error');
+    } finally {
+      setLocating(false);
+    }
+  }
 
   const region = {
     latitude: draft.latitude ?? currentAddress?.latitude ?? 5.6037,
@@ -31,14 +72,10 @@ export default function JobLocationStep() {
     longitudeDelta: 0.01,
   };
 
-  function pickSavedAddress(address: (typeof savedAddresses)[number]) {
-    updateDraft({ latitude: address.latitude, longitude: address.longitude, address: address.line1 });
-  }
-
   function handleNext() {
     const address = draft.address ?? currentAddress?.line1;
     if (!address) {
-      toast.show('Pick a saved address or tap the map to set the job location', 'error');
+      toast.show('Search, use your current location, or tap the map to set the job location', 'error');
       return;
     }
     updateDraft({ latitude: region.latitude, longitude: region.longitude, address });
@@ -48,36 +85,24 @@ export default function JobLocationStep() {
   return (
     <SafeAreaView style={styles.screen}>
       <StepProgress step={4} total={7} title="Where is the job?" />
-      {savedAddresses.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {savedAddresses.map((address) => {
-            const Icon = labelIcons[address.label] ?? MapPin;
-            const active = draft.address === address.line1;
-            return (
-              <AnimatedPressable
-                key={address.id}
-                onPress={() => pickSavedAddress(address)}
-                style={[styles.chip, active ? styles.chipActive : null]}>
-                <Icon size={14} color={active ? '#FFFFFF' : colors.primary} />
-                <Text style={[styles.chipLabel, active ? styles.chipLabelActive : null]} numberOfLines={1}>
-                  {address.label}
-                </Text>
-              </AnimatedPressable>
-            );
-          })}
-        </ScrollView>
-      ) : null}
+      <View style={styles.actionRow}>
+        <AnimatedPressable style={styles.actionButton} onPress={useCurrentLocation} disabled={locating}>
+          <LocateFixed size={16} color={colors.primary} />
+          <Text style={styles.actionLabel}>{locating ? 'Locating…' : 'Use Current Location'}</Text>
+        </AnimatedPressable>
+        <AnimatedPressable style={styles.actionButton} onPress={() => router.push('/(location)/search?for=job')}>
+          <Search size={16} color={colors.primary} />
+          <Text style={styles.actionLabel}>Search Address</Text>
+        </AnimatedPressable>
+      </View>
       <View style={styles.mapWrap}>
-        <MapView
-          style={{ flex: 1 }}
-          initialRegion={region}
-          onPress={(e: MapPressEvent) => updateDraft({ latitude: e.nativeEvent.coordinate.latitude, longitude: e.nativeEvent.coordinate.longitude })}>
+        <MapView style={{ flex: 1 }} initialRegion={region} onPress={handleMapPress}>
           <Marker coordinate={{ latitude: draft.latitude ?? region.latitude, longitude: draft.longitude ?? region.longitude }} />
         </MapView>
         <View style={styles.pill}>
           <MapPin size={16} color={colors.primary} />
           <Text style={styles.pillText} numberOfLines={1}>
-            {draft.address ?? currentAddress?.line1 ?? 'Tap on the map to set location'}
+            {pinning ? 'Locating…' : (draft.address ?? currentAddress?.line1 ?? 'Tap the map for the exact spot')}
           </Text>
         </View>
       </View>
@@ -91,21 +116,20 @@ export default function JobLocationStep() {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
-    chipRow: { paddingHorizontal: 24, paddingBottom: 12, gap: 8 },
-    chip: {
+    actionRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 24, paddingBottom: 12 },
+    actionButton: {
+      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: 6,
       backgroundColor: colors.card,
-      borderRadius: 999,
-      paddingHorizontal: 14,
-      paddingVertical: 9,
+      borderRadius: 12,
+      paddingVertical: 12,
       borderWidth: 1,
       borderColor: colors.border,
     },
-    chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-    chipLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: colors.text },
-    chipLabelActive: { color: '#FFFFFF' },
+    actionLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: colors.primary },
     mapWrap: { flex: 1, marginHorizontal: 24, marginBottom: 16, borderRadius: 24, overflow: 'hidden' },
     pill: {
       position: 'absolute',

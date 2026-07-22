@@ -20,7 +20,15 @@ export default function ForgotPasswordScreen() {
 
   async function handleSend() {
     try {
-      await forgotPassword.mutateAsync(email);
+      const { devCode } = await forgotPassword.mutateAsync(email);
+      if (devCode) {
+        // No email provider configured on this backend — the code can't
+        // actually be emailed, so skip straight to setting a new password
+        // instead of sending the user to type in a code they'd never receive.
+        toast.show('No email provider configured — continuing automatically.', 'success');
+        router.push({ pathname: '/(auth)/new-password', params: { email, code: devCode } });
+        return;
+      }
       router.push({ pathname: '/(auth)/otp', params: { destination: email, next: 'reset-new-password' } });
     } catch {
       toast.show('Could not send reset code. Please try again.', 'error');

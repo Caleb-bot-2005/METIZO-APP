@@ -37,3 +37,34 @@ export interface WalletTransaction {
   amount: number;
   date: string;
 }
+
+// Backend DTO from EscrowDtos.Response — the real escrow ledger entry created
+// automatically when a bid is accepted. paidAt is null until Paystack confirms
+// the customer actually paid it (status HELD just means "assigned & locked in").
+export interface EscrowRecord {
+  id: number;
+  serviceRequestId: number;
+  customerId: number;
+  artisanId: number;
+  amount: number;
+  commission: number | null;
+  artisanPayout: number | null;
+  status: 'HELD' | 'RELEASED' | 'REFUNDED';
+  createdAt: string;
+  settledAt: string | null;
+  paidAt: string | null;
+}
+
+export type PaystackPurpose = 'ESCROW' | 'WALLET_TOPUP';
+
+export interface PaystackInitResult {
+  authorizationUrl: string;
+  reference: string;
+}
+
+export interface PaystackVerifyResult {
+  success: boolean;
+  purpose: PaystackPurpose;
+  requestId: number | null;
+  amount: number;
+}

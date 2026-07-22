@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Bell, ChevronDown, Plus } from 'lucide-react-native';
+import { Bell, ChevronDown, MapPin, Plus } from 'lucide-react-native';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { CategoryCard } from '@/components/features/CategoryCard';
 import { ArtisanCard } from '@/components/features/ArtisanCard';
@@ -31,6 +31,19 @@ export default function HomeScreen() {
   const { t } = useTranslation();
 
   const firstName = user?.name?.split(' ')[0] ?? 'there';
+  // Only artisans with real coordinates and known distance from the customer
+  // count as genuinely "nearby" — distanceKm is 0 for anyone missing either
+  // side's location (see artisanService.toArtisan).
+  const nearbyArtisans = [...(artisans ?? [])].filter((a) => a.distanceKm > 0).sort((a, b) => a.distanceKm - b.distanceKm);
+  // Most artisans won't have set their location yet, which would otherwise
+  // leave this section permanently empty even when people are actually
+  // online and available — fall back to showing those (best trust first)
+  // rather than a dead end. Only the true empty state (nobody online at all)
+  // falls through to the "check back soon" message.
+  const availableFallback = [...(artisans ?? [])]
+    .filter((a) => a.isOnline && a.distanceKm === 0)
+    .sort((a, b) => b.trustScore - a.trustScore);
+  const nearbySectionArtisans = nearbyArtisans.length > 0 ? nearbyArtisans : availableFallback;
 
   return (
     <TabScreen routeIndex={0}>
@@ -89,12 +102,24 @@ export default function HomeScreen() {
               </Text>
             </View>
             {isLoading ? (
-              <View style={{ gap: 12 }}>
-                <SkeletonCard />
+              <GHScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                <View style={styles.nearbySkeleton}><SkeletonCard /></View>
+                <View style={styles.nearbySkeleton}><SkeletonCard /></View>
+                <View style={styles.nearbySkeleton}><SkeletonCard /></View>
+              </GHScrollView>
+            ) : !currentAddress && nearbySectionArtisans.length === 0 ? (
+              <AnimatedPressable onPress={() => router.push('/(location)/search')} style={styles.nearbyPrompt}>
+                <MapPin size={18} color={colors.primary} />
+                <Text style={styles.nearbyPromptText}>Set your location to see artisans near you</Text>
+              </AnimatedPressable>
+            ) : nearbySectionArtisans.length === 0 ? (
+              <View style={styles.nearbyPrompt}>
+                <MapPin size={18} color={colors.textSecondary} />
+                <Text style={styles.nearbyPromptText}>No nearby artisans yet — check back soon</Text>
               </View>
             ) : (
               <GHScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
-                {artisans?.map((artisan) => (
+                {nearbySectionArtisans.map((artisan) => (
                   <ArtisanCard key={artisan.id} artisan={artisan} compact onPress={() => router.push(`/artisans/${artisan.id}`)} />
                 ))}
               </GHScrollView>
@@ -180,6 +205,18 @@ function createStyles(colors: ThemeColors) {
   sectionTitle: { fontFamily: 'Inter_700Bold', fontSize: 18, color: colors.text },
   sectionLink: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.primary },
   categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  nearbySkeleton: { width: 168 },
+  nearbyPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  nearbyPromptText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 13, color: colors.textSecondary },
   promoCard: { borderRadius: 24, overflow: 'hidden', padding: 20, flexDirection: 'row', alignItems: 'center', gap: 16 },
   promoTitle: { fontFamily: 'Inter_700Bold', fontSize: 16, color: colors.text },
   promoSubtitle: { fontFamily: 'Inter_500Medium', fontSize: 12, color: `${colors.text}CC`, marginTop: 2 },

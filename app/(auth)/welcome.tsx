@@ -12,7 +12,7 @@ export default function WelcomeScreen() {
       <SafeAreaView style={styles.screen}>
         <View style={styles.hero}>
           <View style={styles.iconWrap}>
-            <Logo size={40} color="#FFFFFF" dotColor="#FACC15" />
+            <Logo size={48} />
           </View>
           <Text style={styles.title}>Welcome to METIZO</Text>
           <Text style={styles.subtitle}>
@@ -33,7 +33,7 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1, justifyContent: 'space-between', paddingHorizontal: 24, paddingVertical: 32 },
   hero: { alignItems: 'center', gap: 16, marginTop: 64 },
-  iconWrap: { width: 64, height: 64, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  iconWrap: { width: 64, height: 64, borderRadius: 24, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   title: { fontFamily: 'Inter_800ExtraBold', fontSize: 30, color: '#FFFFFF' },
   subtitle: { fontFamily: 'Inter_400Regular', fontSize: 16, color: 'rgba(255,255,255,0.75)', textAlign: 'center', paddingHorizontal: 16, lineHeight: 24 },
   terms: { fontFamily: 'Inter_500Medium', fontSize: 12, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginTop: 8 },

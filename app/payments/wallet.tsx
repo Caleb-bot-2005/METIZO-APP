@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { ArrowDownLeft, ArrowUpRight, Plus } from 'lucide-react-native';
 import { BackButton } from '@/components/ui/BackButton';
 import { Button } from '@/components/ui/Button';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { BottomSheet } from '@/components/ui/BottomSheet';
-import { PaymentCard } from '@/components/features/PaymentCard';
 import { useToast } from '@/components/ui/Toast';
 import { usePaymentStore } from '@/store/paymentStore';
+import { useInitializePaystack } from '@/hooks/queries/usePayments';
 import { formatCurrency } from '@/utils/format';
 import { gradients, ThemeColors } from '@/theme/colors';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -19,10 +20,7 @@ const topUpAmounts = [50, 100, 200, 500];
 export default function WalletScreen() {
   const walletBalance = usePaymentStore((s) => s.walletBalance);
   const transactions = usePaymentStore((s) => s.transactions);
-  const topUpWallet = usePaymentStore((s) => s.topUpWallet);
-  const methods = usePaymentStore((s) => s.methods);
-  const selectedMethodId = usePaymentStore((s) => s.selectedMethodId);
-  const selectMethod = usePaymentStore((s) => s.selectMethod);
+  const initializePaystack = useInitializePaystack();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(100);
   const [customAmount, setCustomAmount] = useState('');
@@ -30,8 +28,6 @@ export default function WalletScreen() {
   const colors = useThemeColors();
   const styles = createStyles(colors);
 
-  const fundingMethods = methods.filter((m) => m.type !== 'wallet');
-  const selectedMethod = fundingMethods.find((m) => m.id === selectedMethodId) ?? fundingMethods[0];
   const amount = customAmount.trim() ? Number(customAmount) : selectedPreset ?? 0;
   const validAmount = amount > 0;
 
@@ -45,19 +41,19 @@ export default function WalletScreen() {
     setSelectedPreset(null);
   }
 
-  function confirmTopUp() {
-    if (!selectedMethod) {
-      toast.show('Add a payment method first', 'error');
-      return;
-    }
+  async function confirmTopUp() {
     if (!validAmount) {
       toast.show('Enter an amount to top up', 'error');
       return;
     }
-    topUpWallet(amount);
-    setModalVisible(false);
-    setCustomAmount('');
-    toast.show(`${formatCurrency(amount)} added from ${selectedMethod.label}`, 'success');
+    try {
+      const { authorizationUrl, reference } = await initializePaystack.mutateAsync({ purpose: 'WALLET_TOPUP', amount });
+      setModalVisible(false);
+      setCustomAmount('');
+      router.push({ pathname: '/payments/paystack-checkout', params: { authorizationUrl, reference } });
+    } catch (error: any) {
+      toast.show(error?.response?.data?.message ?? 'Could not start the payment. Please try again.', 'error');
+    }
   }
 
   return (
@@ -127,26 +123,15 @@ export default function WalletScreen() {
           />
         </View>
 
-        <Text style={styles.sourceTitle}>Top up from</Text>
-        <View style={{ gap: 10 }}>
-          {fundingMethods.map((method) => (
-            <PaymentCard
-              key={method.id}
-              method={method}
-              selected={selectedMethod?.id === method.id}
-              onPress={() => selectMethod(method.id)}
-            />
-          ))}
-        </View>
+        <Text style={styles.sourceTitle}>
+          You'll choose card, mobile money, or bank transfer on Paystack's secure checkout next.
+        </Text>
 
         <Button
-          label={
-            validAmount && selectedMethod
-              ? `Add ${formatCurrency(amount)} from ${selectedMethod.label}`
-              : 'Enter an amount'
-          }
+          label={validAmount ? `Continue to Pay ${formatCurrency(amount)}` : 'Enter an amount'}
           size="lg"
-          disabled={!validAmount || !selectedMethod}
+          loading={initializePaystack.isPending}
+          disabled={!validAmount}
           onPress={confirmTopUp}
         />
         <Button label="Cancel" variant="ghost" size="lg" onPress={() => setModalVisible(false)} />

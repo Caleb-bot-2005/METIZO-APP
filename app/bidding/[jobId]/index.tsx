@@ -67,8 +67,8 @@ export default function LiveBiddingScreen() {
     await acceptBid.mutateAsync({ bidId });
     acceptBidLocal(bidId);
     updateJobStatus(jobId, 'accepted');
-    toast.show('Bid accepted! Artisan notified.', 'success');
-    router.replace(`/jobs/${jobId}`);
+    toast.show('Bid accepted! Secure the payment to confirm the artisan.', 'success');
+    router.replace(`/payments/escrow/${jobId}`);
   }
 
   async function handleRefresh() {

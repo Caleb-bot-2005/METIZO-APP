@@ -3,15 +3,20 @@ import { mockDelay } from './mockDelay';
 import { env } from '@/config/env';
 import { mockArtisans, mockReviews, mockTrustHistory } from '@/constants/mockData';
 import { Artisan, Review, TrustScoreHistory } from '@/types/artisan';
+import { useLocationStore } from '@/store/locationStore';
+import { haversineKm } from '@/utils/geo';
 
 // Backend DTO from ArtisanDtos.Response.
 interface BackendArtisan {
   profileId: number;
   userId: number;
   fullName: string;
+  phone: string | null;
   category: string | null;
   bio: string | null;
   location: string | null;
+  latitude: number | null;
+  longitude: number | null;
   available: boolean;
   verified: boolean;
   jobsCompleted: number;
@@ -31,16 +36,31 @@ interface BackendReview {
   createdAt: string;
 }
 
-// Several fields the frontend's Artisan card/profile UI expects (distance, ETA,
+// Several fields the frontend's Artisan card/profile UI expects (ETA,
 // portfolio, languages, badges, response rate) simply aren't tracked by the
 // backend yet — filled with harmless defaults rather than fabricated data.
 // `verified` is real (an admin-set identity/business check), not derived from
 // trust score — trust score is performance-based and starts at 0 for everyone,
 // so deriving "verified" from it meant no artisan could ever be verified on day one.
+//
+// distanceKm IS real when both sides have coordinates: the artisan set theirs
+// via "Use Current Location" on their profile, and the customer has theirs
+// from the location flow. Either missing means 0 (ArtisanCard already hides
+// the distance chip in that case rather than showing a fake "0 km").
 function toArtisan(a: BackendArtisan): Artisan {
+  const customerLocation = useLocationStore.getState().currentAddress;
+  const hasBothCoordinates = a.latitude != null && a.longitude != null && !!customerLocation;
+  const distanceKm = hasBothCoordinates
+    ? Math.round(haversineKm(customerLocation!.latitude, customerLocation!.longitude, a.latitude!, a.longitude!) * 10) / 10
+    : 0;
+  // Rough urban travel estimate (city traffic, not straight-line speed) — only
+  // shown via distanceKm > 0 checks elsewhere, so it's never displayed alone.
+  const etaMinutes = distanceKm > 0 ? Math.max(5, Math.round(distanceKm * 8)) : 0;
+
   return {
     id: String(a.userId),
     name: a.fullName,
+    phone: a.phone ?? undefined,
     avatarUrl: `https://i.pravatar.cc/150?u=${a.userId}`,
     coverUrl: '',
     profession: a.category ?? '',
@@ -49,8 +69,8 @@ function toArtisan(a: BackendArtisan): Artisan {
     reviewCount: a.ratingCount,
     completedJobs: a.jobsCompleted,
     yearsExperience: 0,
-    distanceKm: 0,
-    etaMinutes: 0,
+    distanceKm,
+    etaMinutes,
     verified: a.verified,
     badges: [],
     responseRate: 0,
@@ -82,6 +102,14 @@ export const artisanService = {
     return data.map(toArtisan);
   },
 
+  // "Smart matching" — best available artisans for one category (used by
+  // emergency dispatch, so only real, currently-available specialists show up).
+  async matchByCategory(category: string): Promise<Artisan[]> {
+    if (env.useMockData) return mockDelay(mockArtisans.filter((a) => a.isOnline));
+    const { data } = await apiClient.get<BackendArtisan[]>('/artisans/match', { params: { category } });
+    return data.map(toArtisan);
+  },
+
   async getById(id: string): Promise<Artisan | undefined> {
     if (env.useMockData) return mockDelay(mockArtisans.find((a) => a.id === id));
     const { data } = await apiClient.get<BackendArtisan>(`/artisans/${id}`);
@@ -100,7 +128,14 @@ export const artisanService = {
   },
 
   // Artisan-side: edit own profile (bio, category, location, availability).
-  async updateMyProfile(input: { category?: string; bio?: string; location?: string; available?: boolean }): Promise<Artisan> {
+  async updateMyProfile(input: {
+    category?: string;
+    bio?: string;
+    location?: string;
+    latitude?: number;
+    longitude?: number;
+    available?: boolean;
+  }): Promise<Artisan> {
     if (env.useMockData) return mockDelay({ ...mockArtisans[0], ...input, isOnline: input.available ?? true } as Artisan, 700);
     const { data } = await apiClient.put<BackendArtisan>('/artisans/me', input);
     return toArtisan(data);

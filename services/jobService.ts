@@ -3,7 +3,7 @@ import { mockDelay } from './mockDelay';
 import { env } from '@/config/env';
 import { mockJob } from '@/constants/mockData';
 import { serviceCategories } from '@/constants/categories';
-import { Job, JobStatus } from '@/types/job';
+import { Job, JobStatus, ProgressStage } from '@/types/job';
 
 // Backend DTO from ServiceRequestDtos.Response.
 interface BackendRequest {
@@ -17,6 +17,7 @@ interface BackendRequest {
   budget: number | null;
   emergency: boolean;
   status: 'OPEN' | 'ASSIGNED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  progressStage: 'STARTED' | 'MATERIALS_PURCHASED' | 'ALMOST_DONE' | 'DONE' | null;
   assignedArtisanId: number | null;
   agreedAmount: number | null;
   createdAt: string;
@@ -28,6 +29,13 @@ const statusMap: Record<BackendRequest['status'], JobStatus> = {
   IN_PROGRESS: 'in_progress',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
+};
+
+const progressStageMap: Record<NonNullable<BackendRequest['progressStage']>, ProgressStage> = {
+  STARTED: 'started',
+  MATERIALS_PURCHASED: 'materials_purchased',
+  ALMOST_DONE: 'almost_done',
+  DONE: 'done',
 };
 
 function toJob(r: BackendRequest): Job {
@@ -48,6 +56,8 @@ function toJob(r: BackendRequest): Job {
     aiEstimatedPrice: amount,
     timing: 'today',
     status: statusMap[r.status],
+    progressStage: r.progressStage ? progressStageMap[r.progressStage] : undefined,
+    assignedArtisanId: r.assignedArtisanId != null ? String(r.assignedArtisanId) : undefined,
     createdAt: r.createdAt,
   };
 }
@@ -63,7 +73,7 @@ export const jobService = {
       category: job.categoryId,
       location: job.address,
       budget: job.aiEstimatedPrice ?? job.budgetMax ?? job.budgetMin ?? null,
-      emergency: false,
+      emergency: job.emergency ?? false,
     });
     return toJob(data);
   },
@@ -116,8 +126,25 @@ export const jobService = {
 
   // Artisan marks an assigned job as started.
   async markInProgress(id: string): Promise<Job> {
-    if (env.useMockData) return mockDelay({ ...mockJob, id, status: 'in_progress' }, 600);
+    if (env.useMockData) return mockDelay({ ...mockJob, id, status: 'in_progress', progressStage: 'started' }, 600);
     const { data } = await apiClient.post<BackendRequest>(`/requests/${id}/start`);
+    return toJob(data);
+  },
+
+  // Artisan reports a work checkpoint (materials purchased / almost done / done).
+  async updateProgress(id: string, stage: Exclude<ProgressStage, 'started'>): Promise<Job> {
+    const backendStage = (Object.keys(progressStageMap) as (keyof typeof progressStageMap)[]).find(
+      (key) => progressStageMap[key] === stage
+    );
+    if (env.useMockData) return mockDelay({ ...mockJob, id, status: 'in_progress', progressStage: stage }, 500);
+    const { data } = await apiClient.post<BackendRequest>(`/requests/${id}/progress`, { stage: backendStage });
+    return toJob(data);
+  },
+
+  // Customer confirms the work is done: releases escrow and completes the request.
+  async confirmCompletion(id: string): Promise<Job> {
+    if (env.useMockData) return mockDelay({ ...mockJob, id, status: 'completed', progressStage: 'done' }, 800);
+    const { data } = await apiClient.post<BackendRequest>(`/requests/${id}/confirm`);
     return toJob(data);
   },
 };

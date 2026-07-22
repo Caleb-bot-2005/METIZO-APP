@@ -108,8 +108,14 @@ export const authService = {
   // Real password-reset flow: emails an actual 4-digit code via the backend (Resend),
   // hashed + expiring server-side. reset() verifies the code and sets the new password
   // in one call (the backend has no separate "verify code" step).
-  async forgotPassword(email: string): Promise<void> {
-    await apiClient.post('/auth/forgot-password', { email });
+  //
+  // devCode is only ever non-null when the backend has no email provider
+  // configured — lets the app skip straight to the new-password screen
+  // instead of the user hunting through server logs. With a real provider
+  // configured, it's always null and the normal "check your email" flow applies.
+  async forgotPassword(email: string): Promise<{ devCode: string | null }> {
+    const { data } = await apiClient.post<{ devCode: string | null }>('/auth/forgot-password', { email });
+    return data;
   },
 
   async resetPassword(email: string, code: string, newPassword: string): Promise<void> {

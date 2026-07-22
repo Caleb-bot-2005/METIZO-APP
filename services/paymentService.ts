@@ -1,33 +1,57 @@
+import { apiClient } from './api/client';
 import { mockDelay } from './mockDelay';
-import { EscrowPayment } from '@/types/payment';
+import { env } from '@/config/env';
+import { EscrowRecord, PaystackInitResult, PaystackPurpose, PaystackVerifyResult } from '@/types/payment';
 
-// The backend has no standalone "create escrow" or "release escrow" endpoints —
-// escrow is created automatically when a bid is accepted (POST /bids/{id}/accept)
-// and released automatically when the customer confirms completion
-// (POST /requests/{id}/confirm). There's only a read-only GET /requests/{id}/escrow
-// to view the ledger entry. This screen's "choose a method and pay" flow doesn't
-// map onto that, so it stays mock-only until that flow is redesigned around the
-// real bid-accept step. Wallet/payment-method data (in paymentStore) is also mock —
-// the backend doesn't model wallets or payment methods at all yet.
+type InitializeInput = { purpose: 'ESCROW'; requestId: string } | { purpose: 'WALLET_TOPUP'; amount: number };
+
+// Escrow is created automatically server-side when a bid is accepted (see
+// authService's note on the real accept-bid flow) — this screen only reads
+// that ledger entry and then collects real payment for it via Paystack.
+// Wallet top-ups have no backend model at all; verifying the Paystack charge
+// is enough proof to credit the local wallet balance client-side.
 export const paymentService = {
-  async createEscrow(jobId: string, amount: number, methodId: string): Promise<EscrowPayment> {
-    const serviceFee = Math.round(amount * 0.05);
-    return mockDelay(
-      {
-        id: `escrow-${Date.now()}`,
-        jobId,
-        amount,
-        serviceFee,
-        total: amount + serviceFee,
-        status: 'secured',
-        methodId,
+  async getEscrow(requestId: string): Promise<EscrowRecord | null> {
+    if (env.useMockData) {
+      return mockDelay({
+        id: 1,
+        serviceRequestId: Number(requestId) || 0,
+        customerId: 0,
+        artisanId: 0,
+        amount: 280,
+        commission: null,
+        artisanPayout: null,
+        status: 'HELD',
         createdAt: new Date().toISOString(),
-      },
-      1500
-    );
+        settledAt: null,
+        paidAt: null,
+      });
+    }
+    try {
+      const { data } = await apiClient.get<EscrowRecord>(`/requests/${requestId}/escrow`);
+      return data;
+    } catch {
+      return null;
+    }
   },
 
-  async release(escrowId: string): Promise<{ success: boolean }> {
-    return mockDelay({ success: true }, 900);
+  async initializePaystack(input: InitializeInput): Promise<PaystackInitResult> {
+    if (env.useMockData) {
+      return mockDelay({ authorizationUrl: '', reference: `mock-${Date.now()}` }, 500);
+    }
+    const body =
+      input.purpose === 'ESCROW'
+        ? { purpose: 'ESCROW' as PaystackPurpose, requestId: Number(input.requestId) }
+        : { purpose: 'WALLET_TOPUP' as PaystackPurpose, amount: input.amount };
+    const { data } = await apiClient.post<PaystackInitResult>('/payments/paystack/initialize', body);
+    return data;
+  },
+
+  async verifyPaystack(reference: string): Promise<PaystackVerifyResult> {
+    if (env.useMockData) {
+      return mockDelay({ success: true, purpose: 'ESCROW', requestId: null, amount: 0 });
+    }
+    const { data } = await apiClient.post<PaystackVerifyResult>('/payments/paystack/verify', { reference });
+    return data;
   },
 };

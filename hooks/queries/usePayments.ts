@@ -1,13 +1,21 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { paymentService } from '@/services/paymentService';
 
-export function useCreateEscrow() {
-  return useMutation({
-    mutationFn: ({ jobId, amount, methodId }: { jobId: string; amount: number; methodId: string }) =>
-      paymentService.createEscrow(jobId, amount, methodId),
+export function useEscrow(requestId?: string) {
+  return useQuery({
+    queryKey: ['escrow', requestId],
+    queryFn: () => paymentService.getEscrow(requestId!),
+    enabled: !!requestId,
   });
 }
 
-export function useReleaseEscrow() {
-  return useMutation({ mutationFn: (escrowId: string) => paymentService.release(escrowId) });
+export function useInitializePaystack() {
+  return useMutation({
+    mutationFn: (input: { purpose: 'ESCROW'; requestId: string } | { purpose: 'WALLET_TOPUP'; amount: number }) =>
+      paymentService.initializePaystack(input),
+  });
+}
+
+export function useVerifyPaystack() {
+  return useMutation({ mutationFn: (reference: string) => paymentService.verifyPaystack(reference) });
 }

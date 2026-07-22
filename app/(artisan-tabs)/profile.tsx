@@ -3,8 +3,9 @@ import { FlatList, ScrollView, StyleSheet, Switch, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { Camera, ImagePlus, LogOut, Pencil, Star, X } from 'lucide-react-native';
+import { Camera, ImagePlus, LocateFixed, LogOut, Pencil, Star, X } from 'lucide-react-native';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -33,21 +34,56 @@ export default function ArtisanProfileScreen() {
   const [editing, setEditing] = useState(false);
   const [category, setCategory] = useState<string | undefined>();
   const [location, setLocation] = useState('');
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | undefined>();
   const [bio, setBio] = useState('');
   const [available, setAvailable] = useState(true);
+  const [locating, setLocating] = useState(false);
 
   useEffect(() => {
     if (artisan) {
       setCategory(serviceCategories.find((c) => c.name === artisan.profession)?.id ?? artisan.profession);
       setLocation('');
+      setCoords(undefined);
       setBio(artisan.bio);
       setAvailable(artisan.isOnline);
     }
   }, [artisan?.id]);
 
+  // Lets customers see real distance to this artisan — without this, they
+  // never show up in anyone's "Nearby Artisans" list.
+  async function useCurrentLocation() {
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        toast.show('Location permission denied.', 'error');
+        return;
+      }
+      const position = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = position.coords;
+      const [place] = await Location.reverseGeocodeAsync({ latitude, longitude }).catch(() => []);
+      const line1 = place
+        ? [place.street, place.name].filter((v, i, arr) => v && arr.indexOf(v) === i).join(', ') || place.district || 'Current location'
+        : 'Current location';
+      setLocation(line1);
+      setCoords({ latitude, longitude });
+    } catch {
+      toast.show('Could not fetch your location. Please try again.', 'error');
+    } finally {
+      setLocating(false);
+    }
+  }
+
   async function handleSave() {
     try {
-      await updateProfile.mutateAsync({ category, bio, location: location || undefined, available });
+      await updateProfile.mutateAsync({
+        category,
+        bio,
+        location: location || undefined,
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+        available,
+      });
       await refetch();
       setEditing(false);
       toast.show('Profile updated', 'success');
@@ -166,7 +202,21 @@ export default function ArtisanProfileScreen() {
                     ))}
                   </View>
                 </View>
-                <Input label="Location" placeholder="East Legon, Accra" value={location} onChangeText={setLocation} />
+                <View style={{ gap: 8 }}>
+                  <Input
+                    label="Location"
+                    placeholder="East Legon, Accra"
+                    value={location}
+                    onChangeText={(text) => {
+                      setLocation(text);
+                      setCoords(undefined);
+                    }}
+                  />
+                  <AnimatedPressable onPress={useCurrentLocation} disabled={locating} style={styles.locateButton}>
+                    <LocateFixed size={14} color={colors.artisan} />
+                    <Text style={styles.locateButtonLabel}>{locating ? 'Locating…' : 'Use Current Location'}</Text>
+                  </AnimatedPressable>
+                </View>
                 <Input
                   label="Bio"
                   multiline
@@ -272,6 +322,20 @@ function createStyles(colors: ThemeColors) {
     editButton: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     editButtonLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 13, color: colors.primary },
     fieldLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.text },
+    locateButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      alignSelf: 'flex-start',
+      backgroundColor: colors.background,
+      borderRadius: 999,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    locateButtonLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 12, color: colors.artisan },
     categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     categoryChip: { backgroundColor: colors.background, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: colors.border },
     categoryChipActive: { backgroundColor: colors.artisan, borderColor: colors.artisan },

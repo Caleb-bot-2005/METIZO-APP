@@ -6,8 +6,11 @@ import { Bell, Briefcase, MapPin } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { SkeletonCard } from '@/components/ui/Skeleton';
+import { EmergencyOfferCard } from '@/components/features/EmergencyOfferCard';
+import { useToast } from '@/components/ui/Toast';
 import { useJobFeed } from '@/hooks/queries/useJobs';
 import { useUnreadNotificationCount } from '@/hooks/queries/useNotifications';
+import { useAcceptEmergencyOffer, useDeclineEmergencyOffer, useMyEmergencyOffers } from '@/hooks/queries/useEmergency';
 import { useAuthStore } from '@/store/authStore';
 import { formatCurrency } from '@/utils/format';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -16,10 +19,32 @@ import { gradients, ThemeColors } from '@/theme/colors';
 export default function ArtisanFeedScreen() {
   const { data: jobs, isLoading } = useJobFeed();
   const { data: unreadCount } = useUnreadNotificationCount();
+  const { data: emergencyOffers } = useMyEmergencyOffers();
+  const acceptOffer = useAcceptEmergencyOffer();
+  const declineOffer = useDeclineEmergencyOffer();
   const user = useAuthStore((s) => s.user);
+  const toast = useToast();
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const firstName = user?.name?.split(' ')[0] ?? 'there';
+
+  async function handleAcceptOffer(offerId: number) {
+    try {
+      await acceptOffer.mutateAsync(String(offerId));
+      toast.show('Emergency job assigned to you — check My Work.', 'success');
+      router.push('/(artisan-tabs)/jobs');
+    } catch (error: any) {
+      toast.show(error?.response?.data?.message ?? 'Someone else got there first.', 'error');
+    }
+  }
+
+  async function handleDeclineOffer(offerId: number) {
+    try {
+      await declineOffer.mutateAsync(String(offerId));
+    } catch {
+      toast.show('Could not decline. Please try again.', 'error');
+    }
+  }
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
@@ -53,6 +78,23 @@ export default function ArtisanFeedScreen() {
           data={jobs}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 24, gap: 12 }}
+          ListHeaderComponent={
+            emergencyOffers && emergencyOffers.length > 0 ? (
+              <View style={{ gap: 12, marginBottom: 12 }}>
+                <Text style={styles.emergencyHeading}>🚨 Emergency Requests — Respond Fast</Text>
+                {emergencyOffers.map((offer) => (
+                  <EmergencyOfferCard
+                    key={offer.offerId}
+                    offer={offer}
+                    onAccept={() => handleAcceptOffer(offer.offerId)}
+                    onDecline={() => handleDeclineOffer(offer.offerId)}
+                    accepting={acceptOffer.isPending}
+                    declining={declineOffer.isPending}
+                  />
+                ))}
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.empty}>
               <Briefcase size={40} color={colors.textSecondary} />
@@ -87,6 +129,7 @@ export default function ArtisanFeedScreen() {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
+    emergencyHeading: { fontFamily: 'Inter_700Bold', fontSize: 14, color: colors.danger },
     hero: {
       paddingHorizontal: 24,
       paddingTop: 8,

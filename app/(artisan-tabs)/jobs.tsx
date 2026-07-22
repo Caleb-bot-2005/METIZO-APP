@@ -6,10 +6,20 @@ import { Card } from '@/components/ui/Card';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { useToast } from '@/components/ui/Toast';
 import { useMyBids } from '@/hooks/queries/useBidding';
-import { useJobs, useMarkInProgress } from '@/hooks/queries/useJobs';
+import { useJobs, useMarkInProgress, useUpdateJobProgress } from '@/hooks/queries/useJobs';
 import { formatCurrency } from '@/utils/format';
+import { Job, ProgressStage } from '@/types/job';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { ThemeColors } from '@/theme/colors';
+
+// What the artisan can report next, given where the job currently stands.
+// STARTED is set automatically by the "Start Job" action, not reported here.
+const nextProgressAction: Record<ProgressStage, { stage: Exclude<ProgressStage, 'started'>; label: string } | null> = {
+  started: { stage: 'materials_purchased', label: 'Mark Materials Purchased' },
+  materials_purchased: { stage: 'almost_done', label: 'Mark Almost Done' },
+  almost_done: { stage: 'done', label: 'Mark Work Complete' },
+  done: null,
+};
 
 const subTabs = [
   { key: 'bids', label: 'My Bids' },
@@ -28,6 +38,7 @@ export default function ArtisanWorkScreen() {
   const { data: bids } = useMyBids();
   const { data: jobs } = useJobs();
   const markInProgress = useMarkInProgress();
+  const updateProgress = useUpdateJobProgress();
   const toast = useToast();
   const colors = useThemeColors();
   const styles = createStyles(colors);
@@ -39,6 +50,40 @@ export default function ArtisanWorkScreen() {
     } catch {
       toast.show('Could not start the job. Please try again.', 'error');
     }
+  }
+
+  async function handleProgress(id: string, stage: Exclude<ProgressStage, 'started'>) {
+    try {
+      await updateProgress.mutateAsync({ id, stage });
+      toast.show('Progress updated', 'success');
+    } catch {
+      toast.show('Could not update progress. Please try again.', 'error');
+    }
+  }
+
+  function renderJobAction(item: Job) {
+    if (item.status === 'accepted') {
+      return (
+        <AnimatedPressable onPress={() => handleStart(item.id)} disabled={markInProgress.isPending} style={styles.startButton}>
+          <Text style={styles.startButtonLabel}>Start Job</Text>
+        </AnimatedPressable>
+      );
+    }
+    if (item.status === 'in_progress') {
+      const action = nextProgressAction[item.progressStage ?? 'started'];
+      if (action) {
+        return (
+          <AnimatedPressable
+            onPress={() => handleProgress(item.id, action.stage)}
+            disabled={updateProgress.isPending}
+            style={styles.startButton}>
+            <Text style={styles.startButtonLabel}>{action.label}</Text>
+          </AnimatedPressable>
+        );
+      }
+      return <Text style={styles.statusHint}>Awaiting customer confirmation</Text>;
+    }
+    return <Text style={styles.statusHint}>{item.status.replace('_', ' ')}</Text>;
   }
 
   return (
@@ -105,16 +150,7 @@ export default function ArtisanWorkScreen() {
               </Text>
               <View style={styles.jobFooter}>
                 <Text style={styles.jobPrice}>{formatCurrency(item.aiEstimatedPrice)}</Text>
-                {item.status === 'accepted' ? (
-                  <AnimatedPressable
-                    onPress={() => handleStart(item.id)}
-                    disabled={markInProgress.isPending}
-                    style={styles.startButton}>
-                    <Text style={styles.startButtonLabel}>Start Job</Text>
-                  </AnimatedPressable>
-                ) : (
-                  <Text style={styles.statusHint}>{item.status.replace('_', ' ')}</Text>
-                )}
+                {renderJobAction(item)}
               </View>
             </Card>
           )}

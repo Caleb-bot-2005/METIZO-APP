@@ -10,6 +10,7 @@ export const mockArtisans: Artisan[] = [
   {
     id: 'a1',
     name: 'Kwame Mensah',
+    phone: '+233241234567',
     avatarUrl: 'https://i.pravatar.cc/150?img=12',
     coverUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=800',
     profession: 'Master Plumber',
@@ -34,6 +35,7 @@ export const mockArtisans: Artisan[] = [
   {
     id: 'a2',
     name: 'Ama Boateng',
+    phone: '+233207654321',
     avatarUrl: 'https://i.pravatar.cc/150?img=32',
     coverUrl: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=800',
     profession: 'Electrical Engineer',
@@ -58,6 +60,7 @@ export const mockArtisans: Artisan[] = [
   {
     id: 'a3',
     name: 'Yaw Owusu',
+    phone: '+233551122334',
     avatarUrl: 'https://i.pravatar.cc/150?img=51',
     coverUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
     profession: 'Furniture Carpenter',
@@ -147,11 +150,26 @@ export const mockMaterials: Material[] = [
   { id: 'mat2', name: 'Ceramic Floor Tiles', category: 'Tiles', price: 35, unit: 'per m²', imageUrl: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=400', supplierId: 's1', supplierName: 'BuildRight Supplies', rating: 4.4, inStock: true },
   { id: 'mat3', name: 'PVC Pipe 4"', category: 'Pipes', price: 65, unit: 'per length', imageUrl: 'https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=400', supplierId: 's2', supplierName: 'Accra Hardware Hub', rating: 4.7, inStock: true },
   { id: 'mat4', name: 'Electrical Cable 2.5mm', category: 'Electrical', price: 18, unit: 'per meter', imageUrl: 'https://images.unsplash.com/photo-1621905251633-beddf70caebb?w=400', supplierId: 's2', supplierName: 'Accra Hardware Hub', rating: 4.5, inStock: false },
+  { id: 'mat5', name: 'Weatherguard Exterior Paint (20L)', category: 'Paint', price: 480, unit: 'bucket', imageUrl: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=400', supplierId: 's3', supplierName: 'Kumasi Building Depot', rating: 4.5, inStock: true },
+  { id: 'mat6', name: 'Wood Primer (5L)', category: 'Paint', price: 140, unit: 'can', imageUrl: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=400', supplierId: 's1', supplierName: 'BuildRight Supplies', rating: 4.3, inStock: true },
+  { id: 'mat7', name: 'Porcelain Wall Tiles', category: 'Tiles', price: 42, unit: 'per m²', imageUrl: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=400', supplierId: 's3', supplierName: 'Kumasi Building Depot', rating: 4.6, inStock: true },
+  { id: 'mat8', name: 'Non-Slip Bathroom Tiles', category: 'Tiles', price: 38, unit: 'per m²', imageUrl: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=400', supplierId: 's2', supplierName: 'Accra Hardware Hub', rating: 4.4, inStock: false },
+  { id: 'mat9', name: 'PVC Pipe 2"', category: 'Pipes', price: 32, unit: 'per length', imageUrl: 'https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=400', supplierId: 's2', supplierName: 'Accra Hardware Hub', rating: 4.6, inStock: true },
+  { id: 'mat10', name: 'Copper Pipe 15mm', category: 'Pipes', price: 95, unit: 'per length', imageUrl: 'https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=400', supplierId: 's3', supplierName: 'Kumasi Building Depot', rating: 4.8, inStock: true },
+  { id: 'mat11', name: 'PPR Fittings Kit', category: 'Pipes', price: 55, unit: 'kit', imageUrl: 'https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=400', supplierId: 's1', supplierName: 'BuildRight Supplies', rating: 4.5, inStock: true },
+  { id: 'mat12', name: 'Electrical Cable 4mm', category: 'Electrical', price: 26, unit: 'per meter', imageUrl: 'https://images.unsplash.com/photo-1621905251633-beddf70caebb?w=400', supplierId: 's3', supplierName: 'Kumasi Building Depot', rating: 4.6, inStock: true },
+  { id: 'mat13', name: 'Circuit Breaker (30A)', category: 'Electrical', price: 75, unit: 'unit', imageUrl: 'https://images.unsplash.com/photo-1621905251633-beddf70caebb?w=400', supplierId: 's2', supplierName: 'Accra Hardware Hub', rating: 4.7, inStock: true },
+  { id: 'mat14', name: 'LED Batten Light 20W', category: 'Electrical', price: 48, unit: 'unit', imageUrl: 'https://images.unsplash.com/photo-1621905251633-beddf70caebb?w=400', supplierId: 's1', supplierName: 'BuildRight Supplies', rating: 4.4, inStock: true },
+  { id: 'mat15', name: 'Portland Cement (50kg)', category: 'Cement', price: 90, unit: 'bag', imageUrl: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=400', supplierId: 's3', supplierName: 'Kumasi Building Depot', rating: 4.5, inStock: true },
+  { id: 'mat16', name: 'Ready-Mix Concrete Bag (25kg)', category: 'Cement', price: 55, unit: 'bag', imageUrl: 'https://images.unsplash.com/photo-1600585152220-90363fe7e115?w=400', supplierId: 's2', supplierName: 'Accra Hardware Hub', rating: 4.3, inStock: true },
+  { id: 'mat17', name: 'Cordless Drill Set', category: 'Tools', price: 320, unit: 'set', imageUrl: 'https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=400', supplierId: 's1', supplierName: 'BuildRight Supplies', rating: 4.8, inStock: true },
+  { id: 'mat18', name: 'Tool Belt & Pouch', category: 'Tools', price: 65, unit: 'unit', imageUrl: 'https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=400', supplierId: 's3', supplierName: 'Kumasi Building Depot', rating: 4.5, inStock: true },
 ];
 
 export const mockSuppliers: Supplier[] = [
   { id: 's1', name: 'BuildRight Supplies', logoUrl: 'https://i.pravatar.cc/150?img=60', rating: 4.6, deliveryEtaDays: 2, location: 'Spintex, Accra' },
   { id: 's2', name: 'Accra Hardware Hub', logoUrl: 'https://i.pravatar.cc/150?img=61', rating: 4.5, deliveryEtaDays: 1, location: 'Osu, Accra' },
+  { id: 's3', name: 'Kumasi Building Depot', logoUrl: 'https://i.pravatar.cc/150?img=62', rating: 4.7, deliveryEtaDays: 3, location: 'Adum, Kumasi' },
 ];
 
 export const mockNotifications: AppNotification[] = [

@@ -64,8 +64,8 @@ export default function NegotiationScreen() {
       await acceptBid.mutateAsync({ bidId: bidId!, agreedAmount: price });
       acceptBidLocal(bidId!);
       updateJobStatus(bid!.jobId, 'accepted');
-      toast.show('Bid accepted! Artisan notified.', 'success');
-      router.replace(`/jobs/${bid!.jobId}`);
+      toast.show('Bid accepted! Secure the payment to confirm the artisan.', 'success');
+      router.replace(`/payments/escrow/${bid!.jobId}`);
     } catch {
       toast.show('Could not accept the bid. Please try again.', 'error');
     }

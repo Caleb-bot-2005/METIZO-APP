@@ -1,9 +1,13 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { jobService } from '@/services/jobService';
-import { Job } from '@/types/job';
+import { Job, ProgressStage } from '@/types/job';
 
+// Polls so status/progress changes (customer confirms, artisan updates
+// progress, a bid gets accepted elsewhere) show up without a manual refresh —
+// this list is read by both the customer's job screens and the artisan's
+// "My Work" tab.
 export function useJobs() {
-  return useQuery({ queryKey: ['jobs'], queryFn: jobService.list });
+  return useQuery({ queryKey: ['jobs'], queryFn: jobService.list, refetchInterval: 5000 });
 }
 
 export function useCreateJob() {
@@ -17,11 +21,39 @@ export function useJobEstimate() {
   });
 }
 
-// Artisan-side: the open marketplace feed.
+// Artisan-side: the open marketplace feed — this is the screen artisans watch
+// for new work, so it needs to update on its own rather than sitting static
+// until they background/reopen the app.
 export function useJobFeed(category?: string) {
-  return useQuery({ queryKey: ['jobs', 'feed', category ?? 'all'], queryFn: () => jobService.listOpenFeed(category) });
+  return useQuery({
+    queryKey: ['jobs', 'feed', category ?? 'all'],
+    queryFn: () => jobService.listOpenFeed(category),
+    refetchInterval: 5000,
+  });
 }
 
 export function useMarkInProgress() {
-  return useMutation({ mutationFn: (id: string) => jobService.markInProgress(id) });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => jobService.markInProgress(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+  });
+}
+
+// Artisan-side: report a work checkpoint (materials purchased / almost done / done).
+export function useUpdateJobProgress() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, stage }: { id: string; stage: Exclude<ProgressStage, 'started'> }) => jobService.updateProgress(id, stage),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+  });
+}
+
+// Customer-side: confirm the work is done, releasing escrow to the artisan.
+export function useConfirmCompletion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => jobService.confirmCompletion(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+  });
 }

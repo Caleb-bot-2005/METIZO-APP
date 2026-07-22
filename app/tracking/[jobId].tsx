@@ -1,26 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapView, Marker, Polyline } from '@/components/ui/AppMap';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Navigation, Phone } from 'lucide-react-native';
+import { MessageCircle, Navigation, Phone } from 'lucide-react-native';
 import { BackButton } from '@/components/ui/BackButton';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { useToast } from '@/components/ui/Toast';
 import { useJobStore } from '@/store/jobStore';
+import { useArtisan } from '@/hooks/queries/useArtisans';
 import { mockArtisans } from '@/constants/mockData';
 import { ThemeColors } from '@/theme/colors';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 
 const TOTAL_STEPS = 40;
 
+// Strips everything but leading + and digits so tel:/wa.me links don't choke
+// on spaces or dashes a phone number might be stored with.
+function toDialable(phone: string) {
+  return phone.replace(/(?!^\+)[^\d]/g, '');
+}
+
 export default function TrackingScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const job = useJobStore((s) => s.jobs.find((j) => j.id === jobId));
   const updateJobStatus = useJobStore((s) => s.updateJobStatus);
-  const artisan = mockArtisans[0];
+  const { data: assignedArtisan } = useArtisan(job?.assignedArtisanId ?? '');
+  const artisan = assignedArtisan ?? mockArtisans[0];
   const [step, setStep] = useState(0);
+  const [callSheetVisible, setCallSheetVisible] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const toast = useToast();
   const colors = useThemeColors();
   const styles = createStyles(colors);
 
@@ -55,6 +67,29 @@ export default function TrackingScreen() {
   const etaMinutes = Math.max(0, Math.round(12 * (1 - progress)));
   const distanceKm = Math.max(0, 3.2 * (1 - progress)).toFixed(1);
 
+  function callViaPhone() {
+    setCallSheetVisible(false);
+    if (!artisan.phone) {
+      toast.show("This artisan hasn't shared a phone number yet.", 'error');
+      return;
+    }
+    Linking.openURL(`tel:${toDialable(artisan.phone)}`);
+  }
+
+  // WhatsApp has no URL scheme that starts an actual call — this opens the
+  // chat with them, where the customer taps WhatsApp's own call button. That's
+  // the real "internet call" option available without building VoIP infra.
+  function callViaWhatsApp() {
+    setCallSheetVisible(false);
+    if (!artisan.phone) {
+      toast.show("This artisan hasn't shared a phone number yet.", 'error');
+      return;
+    }
+    Linking.openURL(`https://wa.me/${toDialable(artisan.phone).replace('+', '')}`).catch(() =>
+      toast.show('WhatsApp is not installed.', 'error')
+    );
+  }
+
   return (
     <SafeAreaView style={styles.screen} edges={['bottom']}>
       <View style={{ flex: 1 }}>
@@ -85,7 +120,7 @@ export default function TrackingScreen() {
             <Text style={styles.artisanName}>{artisan.name}</Text>
             <Text style={styles.artisanProfession}>{artisan.profession}</Text>
           </View>
-          <AnimatedPressable style={styles.callButton}>
+          <AnimatedPressable style={styles.callButton} onPress={() => setCallSheetVisible(true)}>
             <Phone size={18} color={colors.primary} />
           </AnimatedPressable>
         </View>
@@ -113,6 +148,28 @@ export default function TrackingScreen() {
           </Text>
         ) : null}
       </View>
+
+      <BottomSheet visible={callSheetVisible} onClose={() => setCallSheetVisible(false)}>
+        <Text style={styles.callSheetTitle}>Call {artisan.name}</Text>
+        <AnimatedPressable onPress={callViaPhone} style={styles.callOption}>
+          <View style={[styles.callOptionIcon, { backgroundColor: `${colors.primary}1A` }]}>
+            <Phone size={20} color={colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.callOptionLabel}>Call via Airtime</Text>
+            <Text style={styles.callOptionSubtitle}>Uses your carrier's regular calling minutes</Text>
+          </View>
+        </AnimatedPressable>
+        <AnimatedPressable onPress={callViaWhatsApp} style={styles.callOption}>
+          <View style={[styles.callOptionIcon, { backgroundColor: `${colors.success}1A` }]}>
+            <MessageCircle size={20} color={colors.success} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.callOptionLabel}>Call via WhatsApp</Text>
+            <Text style={styles.callOptionSubtitle}>Uses internet data instead of airtime</Text>
+          </View>
+        </AnimatedPressable>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -120,6 +177,11 @@ export default function TrackingScreen() {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
+    callSheetTitle: { fontFamily: 'Inter_700Bold', fontSize: 18, color: colors.text, marginBottom: 4 },
+    callOption: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.background, borderRadius: 16, padding: 14 },
+    callOptionIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+    callOptionLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.text },
+    callOptionSubtitle: { fontFamily: 'Inter_400Regular', fontSize: 12, color: colors.textSecondary, marginTop: 2 },
     markerDot: { backgroundColor: colors.primary, borderRadius: 999, padding: 8, borderWidth: 2, borderColor: '#FFFFFF' },
     topBar: { position: 'absolute', top: 56, left: 24, right: 24, flexDirection: 'row', justifyContent: 'space-between' },
     trafficPill: {

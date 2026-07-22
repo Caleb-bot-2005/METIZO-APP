@@ -34,8 +34,9 @@ export function useCounterOffer() {
 }
 
 // Artisan-side: bids the current artisan has placed, and placing a new one.
+// Polls so an accepted/declined status shows up without a manual refresh.
 export function useMyBids() {
-  return useQuery({ queryKey: ['bids', 'mine'], queryFn: biddingService.myBids });
+  return useQuery({ queryKey: ['bids', 'mine'], queryFn: biddingService.myBids, refetchInterval: 5000 });
 }
 
 export function usePlaceBid() {

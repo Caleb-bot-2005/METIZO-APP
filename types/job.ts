@@ -15,6 +15,8 @@ export interface JobPhoto {
   uri: string;
 }
 
+export type ProgressStage = 'started' | 'materials_purchased' | 'almost_done' | 'done';
+
 export interface Job {
   id: string;
   categoryId: string;
@@ -30,6 +32,9 @@ export interface Job {
   timing: JobTiming;
   scheduledAt?: string;
   status: JobStatus;
+  progressStage?: ProgressStage;
+  assignedArtisanId?: string;
+  emergency?: boolean;
   createdAt: string;
   acceptedBidId?: string;
 }

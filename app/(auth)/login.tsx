@@ -124,7 +124,7 @@ export default function LoginScreen() {
           <View style={styles.card}>
             <View style={{ alignItems: 'center', gap: 12 }}>
               <View style={styles.shieldWrap}>
-                <Logo size={30} color="#FFFFFF" />
+                <Logo size={42} />
               </View>
               <View style={{ gap: 4, alignItems: 'center' }}>
                 <Text style={styles.title}>Welcome back</Text>
@@ -253,7 +253,16 @@ function createStyles(colors: ThemeColors) {
       shadowOffset: { width: 0, height: 6 },
       elevation: 2,
     },
-    shieldWrap: { width: 56, height: 56, borderRadius: 16, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+    shieldWrap: {
+      width: 56,
+      height: 56,
+      borderRadius: 16,
+      backgroundColor: '#FFFFFF',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
     title: { fontFamily: 'Inter_800ExtraBold', fontSize: 24, color: colors.text },
     subtitle: { fontFamily: 'Inter_400Regular', fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
     forgotLink: { fontFamily: 'Inter_600SemiBold', fontSize: 14, color: colors.primary, textAlign: 'right' },

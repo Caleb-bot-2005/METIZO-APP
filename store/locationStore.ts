@@ -20,6 +20,25 @@ interface LocationState {
   setPermissionGranted: (granted: boolean) => void;
 }
 
+// Collapses any pre-existing duplicate Home/Work entries left over from before
+// saveAddress() enforced singular slots, so already-installed apps self-heal
+// on next launch instead of showing a row of repeated Home chips forever.
+function dedupeSavedAddresses(addresses: Address[]): Address[] {
+  const slots = new Map<string, Address>();
+  const others: Address[] = [];
+  for (const address of addresses) {
+    if (address.label === 'Other') {
+      others.push(address);
+      continue;
+    }
+    const current = slots.get(address.label);
+    if (!current || address.isDefault || !current.isDefault) {
+      slots.set(address.label, address);
+    }
+  }
+  return [...slots.values(), ...others];
+}
+
 export const useLocationStore = create<LocationState>()(
   persist(
     (set) => ({
@@ -29,11 +48,17 @@ export const useLocationStore = create<LocationState>()(
       setCurrentAddress: (address) => set({ currentAddress: address }),
       saveAddress: (address, makeDefault) =>
         set((s) => {
-          const finalAddress = makeDefault ? { ...address, isDefault: true } : address;
-          const exists = s.savedAddresses.some((a) => a.id === address.id);
+          // Home/Work are singular slots — re-saving one (e.g. running the
+          // location flow again) should replace that slot, not pile up another
+          // "Home" chip. Other has no such limit since it covers arbitrary places.
+          const sameSlot =
+            address.label !== 'Other' ? s.savedAddresses.find((a) => a.label === address.label) : undefined;
+          const targetId = sameSlot?.id ?? address.id;
+          const finalAddress = { ...address, id: targetId, isDefault: makeDefault ? true : address.isDefault };
+          const exists = s.savedAddresses.some((a) => a.id === targetId);
           const savedAddresses = (
-            exists ? s.savedAddresses.map((a) => (a.id === address.id ? finalAddress : a)) : [...s.savedAddresses, finalAddress]
-          ).map((a) => (makeDefault && a.id !== address.id ? { ...a, isDefault: false } : a));
+            exists ? s.savedAddresses.map((a) => (a.id === targetId ? finalAddress : a)) : [...s.savedAddresses, finalAddress]
+          ).map((a) => (makeDefault && a.id !== targetId ? { ...a, isDefault: false } : a));
           return { savedAddresses, currentAddress: finalAddress };
         }),
       selectAddress: (id) =>
@@ -57,6 +82,10 @@ export const useLocationStore = create<LocationState>()(
     {
       name: 'metizo-location',
       storage: createJSONStorage(() => zustandAsyncStorage),
+      merge: (persisted, current) => {
+        const merged = { ...current, ...(persisted as Partial<LocationState>) };
+        return { ...merged, savedAddresses: dedupeSavedAddresses(merged.savedAddresses) };
+      },
     }
   )
 );

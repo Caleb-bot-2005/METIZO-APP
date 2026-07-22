@@ -1,6 +1,7 @@
 export interface Artisan {
   id: string;
   name: string;
+  phone?: string;
   avatarUrl: string;
   coverUrl: string;
   profession: string;
