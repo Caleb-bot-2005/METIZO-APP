@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/Input';
 import { PasswordStrength } from '@/components/ui/PasswordStrength';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { useToast } from '@/components/ui/Toast';
-import { useRegister } from '@/hooks/queries/useAuth';
+import { useRegister, useVerifyEmail } from '@/hooks/queries/useAuth';
 import { serviceCategories } from '@/constants/categories';
 import { UserRole } from '@/types/user';
 import { ThemeColors } from '@/theme/colors';
@@ -32,6 +32,7 @@ export default function RegisterScreen() {
     defaultValues: { name: '', email: '', password: '' },
   });
   const register = useRegister();
+  const verifyEmail = useVerifyEmail();
   const toast = useToast();
   const password = watch('password');
 
@@ -49,11 +50,24 @@ export default function RegisterScreen() {
       return;
     }
     try {
-      await register.mutateAsync({
+      const result = await register.mutateAsync({
         ...values,
         role,
         ...(role === 'artisan' ? { category, bio, location } : {}),
       });
+      if (result.devVerificationCode) {
+        // No email provider configured on this backend — the verification code
+        // can't actually be emailed, so verify automatically instead of
+        // stranding the new account on an OTP screen for a code that never arrives.
+        try {
+          await verifyEmail.mutateAsync({ destination: values.email, code: result.devVerificationCode });
+        } catch {
+          // Even if auto-verify somehow fails, the account is already fully
+          // usable (see authService's note: verification isn't a login gate).
+        }
+        router.replace({ pathname: '/(auth)/success', params: { mode: 'verify-email' } });
+        return;
+      }
       router.push({ pathname: '/(auth)/otp', params: { destination: values.email, next: 'verify-email' } });
     } catch {
       toast.show('Unable to create account. Please try again.', 'error');

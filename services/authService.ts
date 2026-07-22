@@ -9,6 +9,14 @@ interface AuthResponse {
   accessToken: string;
 }
 
+interface RegisterResponse extends AuthResponse {
+  // Non-null only when the backend has no email provider configured — see
+  // AuthDtos.AuthResponse.devVerificationCode. Lets the app verify the
+  // account automatically instead of stranding the user on an OTP screen
+  // for a code that was never actually emailed.
+  devVerificationCode: string | null;
+}
+
 interface RegisterInput {
   name: string;
   email: string;
@@ -19,13 +27,14 @@ interface RegisterInput {
   location?: string;
 }
 
-// Backend DTO: { token, userId, fullName, email, role: 'CUSTOMER'|'ARTISAN'|'ADMIN' }.
+// Backend DTO: { token, userId, fullName, email, role: 'CUSTOMER'|'ARTISAN'|'ADMIN', devVerificationCode }.
 interface BackendAuthResponse {
   token: string;
   userId: number;
   fullName: string;
   email: string;
   role: 'CUSTOMER' | 'ARTISAN' | 'ADMIN';
+  devVerificationCode?: string | null;
 }
 
 function toUser(res: BackendAuthResponse): User {
@@ -64,10 +73,10 @@ export const authService = {
     return { user: toUser(data), accessToken: data.token };
   },
 
-  async register(input: RegisterInput): Promise<AuthResponse> {
+  async register(input: RegisterInput): Promise<RegisterResponse> {
     const { name, email, password, role, category, bio, location } = input;
     if (env.useMockData) {
-      const response = { user: { ...mockUser(email, role), name }, accessToken: 'mock-access' };
+      const response = { user: { ...mockUser(email, role), name }, accessToken: 'mock-access', devVerificationCode: null };
       await mockDelay(null, 900);
       await SecureStore.setItemAsync('metizo-access-token', response.accessToken);
       return response;
@@ -82,7 +91,7 @@ export const authService = {
       location,
     });
     await SecureStore.setItemAsync('metizo-access-token', data.token);
-    return { user: toUser(data), accessToken: data.token };
+    return { user: toUser(data), accessToken: data.token, devVerificationCode: data.devVerificationCode ?? null };
   },
 
   // Register() above already triggers the backend to email a real 4-digit code.

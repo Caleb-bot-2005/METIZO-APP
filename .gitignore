@@ -45,3 +45,7 @@ app-example
 
 # build logs
 *.log
+
+# Claude Code tooling config (not part of the app)
+.claude/
+CLAUDE.md
