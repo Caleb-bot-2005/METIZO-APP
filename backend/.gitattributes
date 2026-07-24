@@ -1,0 +1,6 @@
+# Normalize line endings across the team (Windows / macOS / Linux)
+* text=auto eol=lf
+
+# Maven wrapper scripts
+mvnw text eol=lf
+*.cmd text eol=crlf

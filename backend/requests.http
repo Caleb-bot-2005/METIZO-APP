@@ -1,0 +1,104 @@
+### Metizo API — sample request flow
+### Open in IntelliJ / VS Code (REST Client) and run top-to-bottom.
+
+@host = http://localhost:8080
+
+### 1. Register a customer
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Ama Customer",
+  "email": "ama@example.com",
+  "password": "secret123",
+  "phone": "0240000000",
+  "role": "CUSTOMER"
+}
+
+### 2. Register an artisan (plumber)
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Kofi Plumber",
+  "email": "kofi@example.com",
+  "password": "secret123",
+  "phone": "0240000001",
+  "role": "ARTISAN",
+  "category": "PLUMBING",
+  "bio": "10 years fixing pipes in Accra",
+  "location": "Accra"
+}
+
+### 3. Login as customer  -> copy the token into @customerToken below
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "ama@example.com", "password": "secret123" }
+
+### 4. Login as artisan -> copy the token into @artisanToken below
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{ "email": "kofi@example.com", "password": "secret123" }
+
+@customerToken = PASTE_CUSTOMER_TOKEN
+@artisanToken  = PASTE_ARTISAN_TOKEN
+
+### 5. Customer posts a service request
+POST {{host}}/api/requests
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{
+  "title": "Leaking kitchen sink",
+  "description": "Water pooling under the sink cabinet",
+  "category": "PLUMBING",
+  "location": "East Legon, Accra",
+  "budget": 300,
+  "emergency": true
+}
+
+### 6. Artisan browses open requests
+GET {{host}}/api/requests?category=PLUMBING
+Authorization: Bearer {{artisanToken}}
+
+### 7. Artisan bids on request 1
+POST {{host}}/api/requests/1/bids
+Authorization: Bearer {{artisanToken}}
+Content-Type: application/json
+
+{ "amount": 250, "estimatedTime": "2 days", "message": "Can start tomorrow morning" }
+
+### 8. Customer views all bids on the request (cheapest first)
+GET {{host}}/api/requests/1/bids
+Authorization: Bearer {{customerToken}}
+
+### 9. Customer accepts bid 1 (locks funds in escrow, assigns artisan)
+POST {{host}}/api/bids/1/accept
+Authorization: Bearer {{customerToken}}
+
+### 10. Artisan starts the job
+POST {{host}}/api/requests/1/start
+Authorization: Bearer {{artisanToken}}
+
+### 11. Customer confirms completion (releases escrow, credits trust score)
+POST {{host}}/api/requests/1/confirm
+Authorization: Bearer {{customerToken}}
+
+### 12. Customer leaves a review
+POST {{host}}/api/requests/1/review
+Authorization: Bearer {{customerToken}}
+Content-Type: application/json
+
+{ "rating": 5, "comment": "Fast and clean work!" }
+
+### 13. View escrow ledger entry
+GET {{host}}/api/requests/1/escrow
+Authorization: Bearer {{customerToken}}
+
+### 14. Smart matching — best plumbers (public)
+GET {{host}}/api/artisans/match?category=PLUMBING
+
+### 15. Price-transparency dashboard (public)
+GET {{host}}/api/pricing/categories
