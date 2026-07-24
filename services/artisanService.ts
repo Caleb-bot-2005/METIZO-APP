@@ -61,7 +61,9 @@ function toArtisan(a: BackendArtisan): Artisan {
     id: String(a.userId),
     name: a.fullName,
     phone: a.phone ?? undefined,
-    avatarUrl: `https://i.pravatar.cc/150?u=${a.userId}`,
+    // No photo-upload feature on the backend yet — leave empty rather than a
+    // stock photo of a random stranger; UI falls back to initials (Avatar).
+    avatarUrl: '',
     coverUrl: '',
     profession: a.category ?? '',
     trustScore: a.trustScore,
@@ -87,7 +89,7 @@ function toReview(r: BackendReview): Review {
     id: String(r.id),
     artisanId: String(r.artisanId),
     customerName: r.customerName,
-    customerAvatarUrl: `https://i.pravatar.cc/150?u=customer-${r.customerId}`,
+    customerAvatarUrl: '',
     rating: r.rating,
     comment: r.comment ?? '',
     createdAt: r.createdAt,

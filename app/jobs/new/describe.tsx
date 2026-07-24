@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { AudioModule, RecordingPresets, useAudioRecorder } from 'expo-audio';
+import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import { Mic, Sparkles, Square } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { StepProgress } from '@/components/ui/StepProgress';
@@ -66,6 +66,7 @@ export default function JobDescribeStep() {
       setIsListening(false);
       try {
         await recorder.stop();
+        await setAudioModeAsync({ allowsRecording: false });
       } catch {
         toast.show('Could not save recording', 'error');
         return;
@@ -88,8 +89,12 @@ export default function JobDescribeStep() {
         } else {
           toast.show("Didn't catch that, try again", 'error');
         }
-      } catch {
-        toast.show('Voice input failed, please try again', 'error');
+      } catch (error: any) {
+        if (!error?.response) {
+          toast.show("Can't reach the server. Check your connection and try again.", 'error');
+        } else {
+          toast.show(error.response.data?.message ?? 'Voice input failed, please try again', 'error');
+        }
       } finally {
         setIsTranscribing(false);
       }
@@ -102,6 +107,12 @@ export default function JobDescribeStep() {
     }
     baseDescription.current = description.trim();
     try {
+      // Recording is disallowed by default (especially on iOS, where
+      // allowsRecording defaults to false) until the audio session is
+      // explicitly switched into a mode that permits it — without this,
+      // prepareToRecordAsync()/record() reject and this whole block never
+      // gets past "Could not start recording."
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       await recorder.prepareToRecordAsync();
       recorder.record();
       setIsListening(true);

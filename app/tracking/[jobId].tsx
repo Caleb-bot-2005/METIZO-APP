@@ -2,16 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapView, Marker, Polyline } from '@/components/ui/AppMap';
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { MessageCircle, Navigation, Phone } from 'lucide-react-native';
 import { BackButton } from '@/components/ui/BackButton';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { Avatar } from '@/components/ui/Avatar';
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { useToast } from '@/components/ui/Toast';
 import { useJobStore } from '@/store/jobStore';
 import { useArtisan } from '@/hooks/queries/useArtisans';
-import { mockArtisans } from '@/constants/mockData';
 import { ThemeColors } from '@/theme/colors';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 
@@ -27,8 +26,7 @@ export default function TrackingScreen() {
   const { jobId } = useLocalSearchParams<{ jobId: string }>();
   const job = useJobStore((s) => s.jobs.find((j) => j.id === jobId));
   const updateJobStatus = useJobStore((s) => s.updateJobStatus);
-  const { data: assignedArtisan } = useArtisan(job?.assignedArtisanId ?? '');
-  const artisan = assignedArtisan ?? mockArtisans[0];
+  const { data: artisan } = useArtisan(job?.assignedArtisanId ?? '');
   const [step, setStep] = useState(0);
   const [callSheetVisible, setCallSheetVisible] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -59,6 +57,14 @@ export default function TrackingScreen() {
     };
   }, [jobId]);
 
+  if (!job || !artisan) {
+    return (
+      <SafeAreaView style={[styles.screen, { alignItems: 'center', justifyContent: 'center' }]}>
+        <Text style={styles.notFound}>{job ? 'Loading artisan details…' : 'Job not found'}</Text>
+      </SafeAreaView>
+    );
+  }
+
   const progress = step / TOTAL_STEPS;
   const currentPosition = {
     latitude: origin.latitude + (destination.latitude - origin.latitude) * progress,
@@ -69,7 +75,7 @@ export default function TrackingScreen() {
 
   function callViaPhone() {
     setCallSheetVisible(false);
-    if (!artisan.phone) {
+    if (!artisan?.phone) {
       toast.show("This artisan hasn't shared a phone number yet.", 'error');
       return;
     }
@@ -81,7 +87,7 @@ export default function TrackingScreen() {
   // the real "internet call" option available without building VoIP infra.
   function callViaWhatsApp() {
     setCallSheetVisible(false);
-    if (!artisan.phone) {
+    if (!artisan?.phone) {
       toast.show("This artisan hasn't shared a phone number yet.", 'error');
       return;
     }
@@ -115,7 +121,7 @@ export default function TrackingScreen() {
 
       <View style={styles.sheet}>
         <View style={styles.artisanRow}>
-          <Image source={{ uri: artisan.avatarUrl }} style={{ width: 52, height: 52, borderRadius: 26 }} />
+          <Avatar name={artisan.name} uri={artisan.avatarUrl} size={52} />
           <View style={{ flex: 1 }}>
             <Text style={styles.artisanName}>{artisan.name}</Text>
             <Text style={styles.artisanProfession}>{artisan.profession}</Text>
@@ -157,7 +163,7 @@ export default function TrackingScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.callOptionLabel}>Call via Airtime</Text>
-            <Text style={styles.callOptionSubtitle}>Uses your carrier's regular calling minutes</Text>
+            <Text style={styles.callOptionSubtitle}>Uses your carrier&apos;s regular calling minutes</Text>
           </View>
         </AnimatedPressable>
         <AnimatedPressable onPress={callViaWhatsApp} style={styles.callOption}>
@@ -177,6 +183,7 @@ export default function TrackingScreen() {
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: colors.background },
+    notFound: { fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.textSecondary },
     callSheetTitle: { fontFamily: 'Inter_700Bold', fontSize: 18, color: colors.text, marginBottom: 4 },
     callOption: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.background, borderRadius: 16, padding: 14 },
     callOptionIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },

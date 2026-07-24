@@ -72,7 +72,7 @@ export default function CheckoutScreen() {
         <View style={styles.paystackBanner}>
           <ShieldCheck size={20} color={colors.primary} />
           <Text style={styles.paystackText}>
-            Choose card, mobile money, or bank transfer on Paystack's secure checkout — METIZO never sees your
+            Choose card, mobile money, or bank transfer on Paystack&apos;s secure checkout — METIZO never sees your
             payment details.
           </Text>
         </View>

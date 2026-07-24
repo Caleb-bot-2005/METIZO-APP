@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { MapPin, Star } from 'lucide-react-native';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { Avatar } from '@/components/ui/Avatar';
 import { TrustBadge } from '@/components/ui/TrustBadge';
 import { VerifiedBadge } from '@/components/ui/VerifiedBadge';
 import { Artisan } from '@/types/artisan';
@@ -33,7 +33,7 @@ export function ArtisanCard({ artisan, onPress, compact }: ArtisanCardProps) {
       <AnimatedPressable onPress={onPress} style={styles.compactCard}>
         <View style={{ alignItems: 'center', gap: 8 }}>
           <View>
-            <Image source={{ uri: artisan.avatarUrl }} style={{ width: 64, height: 64, borderRadius: 32 }} />
+            <Avatar name={artisan.name} uri={artisan.avatarUrl} size={64} />
             {artisan.isOnline ? <View style={styles.onlineDot} /> : null}
           </View>
           <View style={styles.compactNameRow}>
@@ -57,7 +57,7 @@ export function ArtisanCard({ artisan, onPress, compact }: ArtisanCardProps) {
     <AnimatedPressable onPress={onPress} style={styles.card}>
       <View style={styles.row}>
         <View>
-          <Image source={{ uri: artisan.avatarUrl }} style={{ width: 64, height: 64, borderRadius: 32 }} />
+          <Avatar name={artisan.name} uri={artisan.avatarUrl} size={64} />
           {artisan.isOnline ? <View style={styles.onlineDot} /> : null}
         </View>
         <View style={{ flex: 1, gap: 4 }}>

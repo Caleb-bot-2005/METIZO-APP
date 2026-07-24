@@ -1,6 +1,5 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import {
@@ -17,9 +16,10 @@ import {
   Wallet,
 } from 'lucide-react-native';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { Avatar } from '@/components/ui/Avatar';
 import { TabScreen } from '@/components/ui/TabScreen';
 import { useAuthStore } from '@/store/authStore';
-import { usePaymentStore } from '@/store/paymentStore';
+import { useWalletBalance } from '@/hooks/queries/useWallet';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { formatCurrency } from '@/utils/format';
 import { gradients, ThemeColors } from '@/theme/colors';
@@ -38,7 +38,7 @@ const menuItems = [
 export default function ProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const walletBalance = usePaymentStore((s) => s.walletBalance);
+  const { data: walletBalance = 0 } = useWalletBalance();
   const currentPlanId = useSubscriptionStore((s) => s.currentPlanId);
   const colors = useThemeColors();
   const styles = createStyles(colors);
@@ -54,10 +54,7 @@ export default function ProfileScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
         <View style={styles.body}>
           <View style={styles.profileRow}>
-            <Image
-              source={{ uri: 'https://i.pravatar.cc/150?img=68' }}
-              style={{ width: 68, height: 68, borderRadius: 34 }}
-            />
+            <Avatar name={user?.name ?? 'Metizo User'} uri={user?.avatarUrl} size={68} />
             <View style={{ flex: 1 }}>
               <Text style={styles.name}>{user?.name ?? 'Metizo User'}</Text>
               <Text style={styles.email}>{user?.email ?? 'you@example.com'}</Text>

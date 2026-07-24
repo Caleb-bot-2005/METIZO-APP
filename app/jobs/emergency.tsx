@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { AlertTriangle, Clock, LocateFixed, MapPin, RefreshCw, Search, ShieldCheck, Siren, Star, UserX, Zap } from 'lucide-react-native';
-import { Image } from 'expo-image';
+import { Avatar } from '@/components/ui/Avatar';
 import { BackButton } from '@/components/ui/BackButton';
 import { Button } from '@/components/ui/Button';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
@@ -174,7 +174,7 @@ export default function EmergencyModeScreen() {
       <View style={styles.body}>
         {phase === 'form' ? (
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 20, paddingBottom: 24 }}>
-            <Text style={styles.sectionTitle}>1. What's the emergency?</Text>
+            <Text style={styles.sectionTitle}>1. What&apos;s the emergency?</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {emergencyCategories.map((category) => (
                 <AnimatedPressable
@@ -193,7 +193,7 @@ export default function EmergencyModeScreen() {
 
             {selectedCategory ? (
               <>
-                <Text style={styles.sectionTitle}>2. What's the problem?</Text>
+                <Text style={styles.sectionTitle}>2. What&apos;s the problem?</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
                   {problemOptions.map((problem) => (
                     <AnimatedPressable
@@ -246,7 +246,7 @@ export default function EmergencyModeScreen() {
                       {formatCurrency(estimate.lowEstimate)} - {formatCurrency(estimate.highEstimate)}
                     </Text>
                     <Text style={styles.estimateNote}>
-                      Fixed estimate, no bidding — held securely in escrow once you're matched. Final amount confirmed
+                      Fixed estimate, no bidding — held securely in escrow once you&apos;re matched. Final amount confirmed
                       before payment.
                     </Text>
                   </View>
@@ -275,13 +275,13 @@ export default function EmergencyModeScreen() {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 16, paddingBottom: 24 }}>
             <View style={styles.matchedBanner}>
               <ShieldCheck size={20} color={colors.success} />
-              <Text style={styles.matchedBannerText}>Artisan matched! They've been notified and are on the way.</Text>
+              <Text style={styles.matchedBannerText}>Artisan matched! They&apos;ve been notified and are on the way.</Text>
             </View>
 
             {matchedArtisan ? (
               <View style={styles.artisanCard}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <Image source={{ uri: matchedArtisan.avatarUrl }} style={{ width: 56, height: 56, borderRadius: 28 }} />
+                  <Avatar name={matchedArtisan.name} uri={matchedArtisan.avatarUrl} size={56} />
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <Text style={styles.artisanName}>{matchedArtisan.name}</Text>

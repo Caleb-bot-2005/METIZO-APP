@@ -147,4 +147,10 @@ export const jobService = {
     const { data } = await apiClient.post<BackendRequest>(`/requests/${id}/confirm`);
     return toJob(data);
   },
+
+  // Permanently removes a cancelled request. Backend rejects this for any other status.
+  async delete(id: string): Promise<void> {
+    if (env.useMockData) return mockDelay(undefined, 400);
+    await apiClient.delete(`/requests/${id}`);
+  },
 };

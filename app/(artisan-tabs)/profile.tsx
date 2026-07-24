@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -7,6 +7,7 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { Camera, ImagePlus, LocateFixed, LogOut, Pencil, Star, X } from 'lucide-react-native';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { TrustBadge } from '@/components/ui/TrustBadge';
@@ -22,7 +23,7 @@ import { ThemeColors } from '@/theme/colors';
 export default function ArtisanProfileScreen() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const { data: artisan, refetch } = useArtisan(user?.id ?? '');
+  const { data: artisan, isLoading, isError, refetch } = useArtisan(user?.id ?? '');
   const updateProfile = useUpdateMyProfile();
   const { data: portfolio } = useArtisanPortfolio(user?.id ?? '');
   const uploadPortfolioPhoto = useUploadPortfolioPhoto(user?.id ?? '');
@@ -137,14 +138,38 @@ export default function ArtisanProfileScreen() {
     }
   }
 
-  if (!artisan) return <SafeAreaView style={styles.screen} />;
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.screen, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator color={colors.artisan} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!artisan) {
+    // A logged-in session whose own profile 404s (account deleted since the
+    // token was issued — e.g. a database reset — or any other persistent
+    // fetch failure) isn't something Retry can fix. GET /api/artisans/{id}
+    // is a public endpoint, so this never goes through the 401/session-expiry
+    // path (services/api/client.ts) — the user needs an explicit way out
+    // rather than being stuck on a dead screen with no escape.
+    return (
+      <SafeAreaView style={[styles.screen, { alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 24 }]}>
+        <Text style={styles.detailValue}>{isError ? "Couldn't load your profile." : 'Profile not found.'}</Text>
+        <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'center' }}>
+          <Button label="Retry" size="sm" variant="outline" fullWidth={false} onPress={() => refetch()} />
+          <Button label="Log Out" size="sm" fullWidth={false} onPress={handleLogout} style={{ backgroundColor: colors.danger }} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.screen} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
         <View style={styles.body}>
           <View style={styles.profileRow}>
-            <Image source={{ uri: artisan.avatarUrl }} style={{ width: 72, height: 72, borderRadius: 36 }} />
+            <Avatar name={artisan.name} uri={artisan.avatarUrl} size={72} />
             <View style={{ flex: 1 }}>
               <View style={styles.nameRow}>
                 <Text style={styles.name}>{artisan.name}</Text>

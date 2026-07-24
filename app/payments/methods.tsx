@@ -1,6 +1,6 @@
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus } from 'lucide-react-native';
+import { CreditCard, Plus } from 'lucide-react-native';
 import { BackButton } from '@/components/ui/BackButton';
 import { PaymentCard } from '@/components/features/PaymentCard';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
@@ -25,6 +25,12 @@ export default function PaymentMethodsScreen() {
         data={methods}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 24, gap: 10 }}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <CreditCard size={40} color={colors.textSecondary} />
+            <Text style={styles.emptyLabel}>No payment methods yet</Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <PaymentCard method={item} selected={selectedMethodId === item.id} onPress={() => selectMethod(item.id)} />
         )}
@@ -44,6 +50,8 @@ function createStyles(colors: ThemeColors) {
     screen: { flex: 1, backgroundColor: colors.background },
     header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 24, paddingTop: 8 },
     headerTitle: { fontFamily: 'Inter_700Bold', fontSize: 18, color: colors.text },
+    empty: { alignItems: 'center', gap: 12, marginTop: 64 },
+    emptyLabel: { fontFamily: 'Inter_500Medium', fontSize: 14, color: colors.textSecondary },
     addButton: {
       flexDirection: 'row',
       alignItems: 'center',

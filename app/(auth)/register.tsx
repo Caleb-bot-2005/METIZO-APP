@@ -69,8 +69,14 @@ export default function RegisterScreen() {
         return;
       }
       router.push({ pathname: '/(auth)/otp', params: { destination: values.email, next: 'verify-email' } });
-    } catch {
-      toast.show('Unable to create account. Please try again.', 'error');
+    } catch (error: any) {
+      if (!error?.response) {
+        toast.show("Can't reach the server. Check your connection and try again.", 'error');
+      } else if (error.response.status === 400) {
+        toast.show(error.response.data?.message ?? 'Unable to create account. Please try again.', 'error');
+      } else {
+        toast.show('Unable to create account. Please try again.', 'error');
+      }
     }
   }
 

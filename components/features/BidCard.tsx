@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Clock, MapPin, Star } from 'lucide-react-native';
+import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { TrustBadge } from '@/components/ui/TrustBadge';
 import { Bid } from '@/types/bidding';
@@ -26,7 +26,7 @@ export function BidCard({ bid, index = 0, onAccept, onNegotiate, onDecline, onPr
   return (
     <Animated.View entering={FadeInUp.delay(index * 80).springify().damping(16)} style={styles.card}>
       <View style={styles.row}>
-        <Image source={{ uri: bid.artisan.avatarUrl }} style={{ width: 52, height: 52, borderRadius: 26 }} />
+        <Avatar name={bid.artisan.name} uri={bid.artisan.avatarUrl} size={52} />
         <View style={{ flex: 1 }}>
           <Text numberOfLines={1} style={styles.name}>{bid.artisan.name}</Text>
           <View style={styles.metaRow}>

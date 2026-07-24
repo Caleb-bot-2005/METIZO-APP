@@ -43,7 +43,7 @@ function toArtisanStub(id: number, name: string, trustScore: number): Artisan {
   return {
     id: String(id),
     name,
-    avatarUrl: `https://i.pravatar.cc/150?u=${id}`,
+    avatarUrl: '',
     coverUrl: '',
     profession: '',
     trustScore,

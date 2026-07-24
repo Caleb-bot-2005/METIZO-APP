@@ -1,13 +1,15 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { CheckCircle2, MapPinned, MessageCircle, Star } from 'lucide-react-native';
+import { CheckCircle2, MapPinned, MessageCircle, ShieldAlert, Star } from 'lucide-react-native';
 import { BackButton } from '@/components/ui/BackButton';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { TimelineCard } from '@/components/features/TimelineCard';
 import { useToast } from '@/components/ui/Toast';
 import { useConfirmCompletion } from '@/hooks/queries/useJobs';
+import { useWorkPhotos } from '@/hooks/queries/useWorkPhotos';
 import { useJobStore } from '@/store/jobStore';
 import { formatCurrency } from '@/utils/format';
 import { Job, JobTimelineStep, ProgressStage } from '@/types/job';
@@ -45,6 +47,7 @@ export default function JobDetailScreen() {
   const job = jobs.find((j) => j.id === id);
   const updateJobStatus = useJobStore((s) => s.updateJobStatus);
   const confirmCompletion = useConfirmCompletion();
+  const { data: photos } = useWorkPhotos(job?.id);
   const toast = useToast();
   const colors = useThemeColors();
   const styles = createStyles(colors);
@@ -56,6 +59,12 @@ export default function JobDetailScreen() {
       </SafeAreaView>
     );
   }
+
+  // Mirrors the backend's confirmCompletion gate (ServiceRequestService.java):
+  // release is only allowed once the artisan reported DONE and posted an
+  // AFTER photo. Checked client-side too so the button reflects reality
+  // instead of the customer hitting a confusing 400.
+  const hasCompletionProof = job.progressStage === 'done' && !!photos?.some((p) => p.type === 'after');
 
   async function handleConfirm() {
     try {
@@ -107,18 +116,47 @@ export default function JobDetailScreen() {
 
         <TimelineCard steps={buildTimeline(job)} />
 
+        {photos && photos.length > 0 ? (
+          <View style={{ gap: 8 }}>
+            <Text style={styles.photosTitle}>Completion Photos</Text>
+            <FlatList
+              data={photos}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10 }}
+              renderItem={({ item }) => (
+                <View>
+                  <Image source={{ uri: item.url }} style={styles.photoThumb} />
+                  <Text style={styles.photoLabel}>{item.type === 'after' ? 'After' : 'Before'}</Text>
+                </View>
+              )}
+            />
+          </View>
+        ) : null}
+
         {job.status === 'bidding' ? (
           <Button label="View Live Bids" size="lg" onPress={() => router.push(`/bidding/${job.id}`)} />
         ) : null}
 
         {job.status === 'in_progress' ? (
-          <Button
-            label={job.progressStage === 'done' ? 'Confirm & Release Payment' : 'Confirm & Release Payment Early'}
-            size="lg"
-            loading={confirmCompletion.isPending}
-            icon={<CheckCircle2 size={16} color="#FFFFFF" />}
-            onPress={handleConfirm}
-          />
+          hasCompletionProof ? (
+            <Button
+              label="Confirm & Release Payment"
+              size="lg"
+              loading={confirmCompletion.isPending}
+              icon={<CheckCircle2 size={16} color="#FFFFFF" />}
+              onPress={handleConfirm}
+            />
+          ) : (
+            <View style={styles.waitingBanner}>
+              <ShieldAlert size={18} color={colors.textSecondary} />
+              <Text style={styles.waitingBannerText}>
+                Your payment stays safely in escrow until the artisan marks the job done and posts photos of the
+                finished work for you to review.
+              </Text>
+            </View>
+          )
         ) : null}
 
         {job.status === 'completed' ? (
@@ -145,5 +183,19 @@ function createStyles(colors: ThemeColors) {
     metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12 },
     address: { fontFamily: 'Inter_500Medium', fontSize: 12, color: colors.textSecondary },
     price: { fontFamily: 'Inter_700Bold', fontSize: 14, color: colors.primary },
+    photosTitle: { fontFamily: 'Inter_700Bold', fontSize: 16, color: colors.text },
+    photoThumb: { width: 120, height: 120, borderRadius: 14, backgroundColor: colors.card },
+    photoLabel: { fontFamily: 'Inter_600SemiBold', fontSize: 11, color: colors.textSecondary, marginTop: 4, textAlign: 'center' },
+    waitingBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.card,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    waitingBannerText: { flex: 1, fontFamily: 'Inter_500Medium', fontSize: 13, color: colors.textSecondary },
   });
 }

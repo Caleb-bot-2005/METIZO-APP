@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Briefcase, Calendar, CheckCircle2, XCircle } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { TabScreen } from '@/components/ui/TabScreen';
-import { useJobs } from '@/hooks/queries/useJobs';
+import { useToast } from '@/components/ui/Toast';
+import { useDeleteJob, useJobs } from '@/hooks/queries/useJobs';
 import { useJobStore } from '@/store/jobStore';
 import { formatCurrency } from '@/utils/format';
 import { JobStatus } from '@/types/job';
@@ -35,6 +36,8 @@ export default function JobsScreen() {
   const jobs = useJobStore((s) => s.jobs);
   const setJobs = useJobStore((s) => s.setJobs);
   const { data: fetchedJobs } = useJobs();
+  const deleteJob = useDeleteJob();
+  const toast = useToast();
   const colors = useThemeColors();
   const styles = createStyles(colors);
 
@@ -44,6 +47,23 @@ export default function JobsScreen() {
 
   const currentTab = tabs.find((t) => t.key === active)!;
   const filtered = jobs.filter((j) => currentTab.statuses.includes(j.status));
+
+  function confirmDelete(id: string, title: string) {
+    Alert.alert('Delete this job?', `"${title}" will be permanently removed. This can't be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteJob.mutateAsync(id);
+          } catch {
+            toast.show('Could not delete this job. Please try again.', 'error');
+          }
+        },
+      },
+    ]);
+  }
 
   return (
     <TabScreen routeIndex={2}>
@@ -77,7 +97,9 @@ export default function JobsScreen() {
         renderItem={({ item }) => {
           const meta = statusMeta[item.status];
           return (
-            <AnimatedPressable onPress={() => router.push(`/jobs/${item.id}`)}>
+            <AnimatedPressable
+              onPress={() => router.push(`/jobs/${item.id}`)}
+              onLongPress={active === 'cancelled' ? () => confirmDelete(item.id, item.categoryName) : undefined}>
               <Card style={{ borderLeftWidth: 4, borderLeftColor: meta.color }}>
                 <View style={styles.jobHeader}>
                   <Text style={styles.jobTitle}>{item.categoryName}</Text>

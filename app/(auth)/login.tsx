@@ -15,6 +15,7 @@ import { Logo } from '@/components/ui/Logo';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { useToast } from '@/components/ui/Toast';
 import { useLogin } from '@/hooks/queries/useAuth';
+import { authService } from '@/services/authService';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useAuthStore } from '@/store/authStore';
 import { useLocationStore } from '@/store/locationStore';
@@ -53,12 +54,23 @@ export default function LoginScreen() {
   async function onSubmit(values: FormValues) {
     try {
       const { user, accessToken } = await login.mutateAsync({ ...values, role });
-      // The role toggle above is just a UI hint for which portal the user expects —
-      // the account's real role always comes from the backend. If the user forgot
-      // to switch tabs before logging in, trust the backend's role rather than
-      // rejecting a valid login; just let them know which portal they landed in.
+      // The role toggle above is just a UI hint for which portal the user expects,
+      // but an account's role is fixed at registration and enforced by the backend
+      // on every request — a customer account can never actually use artisan-only
+      // endpoints. Rather than silently dropping the user into the portal their
+      // account really belongs to (confusing — they picked a tab on purpose),
+      // undo the login that useLogin's onSuccess already applied and tell them
+      // plainly what's going on.
       if (user.role !== role) {
-        setRole(user.role);
+        await authService.logout();
+        useAuthStore.getState().logout();
+        toast.show(
+          role === 'artisan'
+            ? 'This account is registered as a Customer. Log in from the Customer tab, or sign up for a new Artisan account.'
+            : 'This account is registered as an Artisan. Log in from the Artisan tab, or sign up for a new Customer account.',
+          'error'
+        );
+        return;
       }
       if (biometricsEnabled) {
         setBiometricEmail(values.email);

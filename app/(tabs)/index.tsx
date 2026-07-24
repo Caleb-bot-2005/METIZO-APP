@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ScrollView as GHScrollView } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +14,7 @@ import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
 import { SkeletonCard } from '@/components/ui/Skeleton';
 import { TabScreen } from '@/components/ui/TabScreen';
 import { useArtisans } from '@/hooks/queries/useArtisans';
+import { seededShuffle } from '@/utils/seededShuffle';
 import { useNotificationStore } from '@/store/notificationStore';
 import { useAuthStore } from '@/store/authStore';
 import { useLocationStore } from '@/store/locationStore';
@@ -25,25 +27,35 @@ export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const currentAddress = useLocationStore((s) => s.currentAddress);
   const unreadCount = useNotificationStore((s) => s.unreadCount());
-  const { data: artisans, isLoading } = useArtisans();
+  const { data: artisans, isLoading, dataUpdatedAt } = useArtisans();
   const colors = useThemeColors();
   const styles = createStyles(colors);
   const { t } = useTranslation();
 
   const firstName = user?.name?.split(' ')[0] ?? 'there';
-  // Only artisans with real coordinates and known distance from the customer
-  // count as genuinely "nearby" — distanceKm is 0 for anyone missing either
-  // side's location (see artisanService.toArtisan).
-  const nearbyArtisans = [...(artisans ?? [])].filter((a) => a.distanceKm > 0).sort((a, b) => a.distanceKm - b.distanceKm);
-  // Most artisans won't have set their location yet, which would otherwise
-  // leave this section permanently empty even when people are actually
-  // online and available — fall back to showing those (best trust first)
-  // rather than a dead end. Only the true empty state (nobody online at all)
-  // falls through to the "check back soon" message.
-  const availableFallback = [...(artisans ?? [])]
-    .filter((a) => a.isOnline && a.distanceKm === 0)
-    .sort((a, b) => b.trustScore - a.trustScore);
-  const nearbySectionArtisans = nearbyArtisans.length > 0 ? nearbyArtisans : availableFallback;
+  const nearbySectionArtisans = useMemo(() => {
+    // Only artisans with real coordinates and known distance from the customer
+    // count as genuinely "nearby" — distanceKm is 0 for anyone missing either
+    // side's location (see artisanService.toArtisan). Real distances are a
+    // meaningful signal, so this order is left as-is.
+    const nearbyArtisans = [...(artisans ?? [])]
+      .filter((a) => a.distanceKm > 0)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+    if (nearbyArtisans.length > 0) return nearbyArtisans;
+
+    // Most artisans won't have set their location yet, which would otherwise
+    // leave this section permanently empty even when people are actually
+    // online and available — fall back to showing those rather than a dead end.
+    // With no real distance to rank by, always showing the exact same
+    // trust-sorted list forever reads as frozen/broken once useArtisans' 5s
+    // poll brings back identical data — so rotate a fresh random sample (still
+    // biased toward the most trusted) each time a poll actually lands.
+    const pool = [...(artisans ?? [])]
+      .filter((a) => a.isOnline && a.distanceKm === 0)
+      .sort((a, b) => b.trustScore - a.trustScore)
+      .slice(0, 15);
+    return seededShuffle(pool, dataUpdatedAt).slice(0, 8);
+  }, [artisans, dataUpdatedAt]);
 
   return (
     <TabScreen routeIndex={0}>
@@ -126,14 +138,16 @@ export default function HomeScreen() {
             )}
           </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('home_recommended')}</Text>
-            <View style={{ gap: 12 }}>
-              {artisans?.slice(0, 2).map((artisan) => (
-                <ArtisanCard key={artisan.id} artisan={artisan} onPress={() => router.push(`/artisans/${artisan.id}`)} />
-              ))}
+          {artisans && artisans.length > 0 ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t('home_recommended')}</Text>
+              <View style={{ gap: 12 }}>
+                {artisans.slice(0, 2).map((artisan) => (
+                  <ArtisanCard key={artisan.id} artisan={artisan} onPress={() => router.push(`/artisans/${artisan.id}`)} />
+                ))}
+              </View>
             </View>
-          </View>
+          ) : null}
 
           <LinearGradient colors={gradients.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.promoCard}>
             <Image

@@ -12,6 +12,7 @@ import {
   Info,
   Lock,
   Moon,
+  Server,
   Trash2,
 } from 'lucide-react-native';
 import { BackButton } from '@/components/ui/BackButton';
@@ -131,6 +132,10 @@ export default function SettingsScreen() {
             <Switch value={biometricsEnabled} onValueChange={toggleBiometrics} trackColor={{ true: '#0A84FF' }} />
           </Row>
           <RowLink icon={Lock} label={t('settings_change_password')} onPress={() => router.push('/(auth)/forgot-password')} styles={styles} colors={colors} />
+        </Section>
+
+        <Section title="Connection" styles={styles}>
+          <RowLink icon={Server} label="Server Connection" onPress={() => router.push('/settings/server')} styles={styles} colors={colors} />
         </Section>
 
         <Section title={t('settings_about_section')} styles={styles}>

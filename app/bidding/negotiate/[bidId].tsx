@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Send } from 'lucide-react-native';
 import { BackButton } from '@/components/ui/BackButton';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { Avatar } from '@/components/ui/Avatar';
 import { useToast } from '@/components/ui/Toast';
 import { useAcceptBid, useCounterOffer } from '@/hooks/queries/useBidding';
 import { useBiddingStore } from '@/store/biddingStore';
@@ -76,7 +76,7 @@ export default function NegotiationScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <View style={styles.header}>
           <BackButton />
-          <Image source={{ uri: bid.artisan.avatarUrl }} style={{ width: 40, height: 40, borderRadius: 20 }} />
+          <Avatar name={bid.artisan.name} uri={bid.artisan.avatarUrl} size={40} />
           <View style={{ flex: 1 }}>
             <Text style={styles.artisanName}>{bid.artisan.name}</Text>
             <Text style={styles.originalQuote}>Original quote: {formatCurrency(bid.price)}</Text>

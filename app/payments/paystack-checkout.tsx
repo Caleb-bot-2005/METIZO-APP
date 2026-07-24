@@ -3,11 +3,14 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { BackButton } from '@/components/ui/BackButton';
 import { useToast } from '@/components/ui/Toast';
 import { useVerifyPaystack } from '@/hooks/queries/usePayments';
 import { usePaymentStore } from '@/store/paymentStore';
 import { useMarketplaceStore } from '@/store/marketplaceStore';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { PlanId } from '@/types/subscription';
 import { formatCurrency } from '@/utils/format';
 import { ThemeColors } from '@/theme/colors';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -28,6 +31,7 @@ export default function PaystackCheckoutScreen() {
     marketplaceDelivery,
     marketplaceTotal,
     marketplaceAddress,
+    subscriptionPlanId,
   } = useLocalSearchParams<{
     authorizationUrl: string;
     reference: string;
@@ -37,11 +41,14 @@ export default function PaystackCheckoutScreen() {
     marketplaceDelivery?: string;
     marketplaceTotal?: string;
     marketplaceAddress?: string;
+    subscriptionPlanId?: string;
   }>();
   const verifyPaystack = useVerifyPaystack();
-  const topUpWallet = usePaymentStore((s) => s.topUpWallet);
+  const recordTransaction = usePaymentStore((s) => s.recordTransaction);
+  const queryClient = useQueryClient();
   const cart = useMarketplaceStore((s) => s.cart);
   const placeMarketplaceOrder = useMarketplaceStore((s) => s.placeOrder);
+  const setPlan = useSubscriptionStore((s) => s.setPlan);
   const toast = useToast();
   const colors = useThemeColors();
   const styles = createStyles(colors);
@@ -53,7 +60,10 @@ export default function PaystackCheckoutScreen() {
     try {
       const result = await verifyPaystack.mutateAsync(reference);
       if (result.purpose === 'WALLET_TOPUP') {
-        topUpWallet(result.amount);
+        // Balance was credited server-side in the /verify call above (see
+        // PaystackController) — refetch it instead of trusting a local number.
+        queryClient.invalidateQueries({ queryKey: ['wallet', 'balance'] });
+        recordTransaction({ type: 'credit', label: 'Wallet top-up', amount: result.amount });
         toast.show(`${formatCurrency(result.amount)} added to your wallet`, 'success');
         router.back();
       } else if (result.purpose === 'MARKETPLACE_ORDER' && marketplaceOrderId) {
@@ -69,6 +79,10 @@ export default function PaystackCheckoutScreen() {
         });
         toast.show('Payment successful — your order is being prepared!', 'success');
         router.replace(`/marketplace/delivery/${marketplaceOrderId}`);
+      } else if (result.purpose === 'SUBSCRIPTION' && subscriptionPlanId) {
+        setPlan(subscriptionPlanId as PlanId);
+        toast.show('Payment successful — your plan has been upgraded!', 'success');
+        router.replace('/(tabs)/profile');
       } else {
         toast.show('Payment secured — funds are held safely in escrow.', 'success');
         router.replace(`/tracking/${result.requestId ?? requestId}`);

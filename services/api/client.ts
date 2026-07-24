@@ -1,15 +1,18 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
-import { env } from '@/config/env';
 import { useAuthStore } from '@/store/authStore';
+import { getActiveApiBaseUrl } from '@/store/apiConfigStore';
 
 export const apiClient = axios.create({
-  baseURL: env.apiBaseUrl,
   timeout: 15000,
 });
 
+// Read fresh on every request instead of baking a fixed baseURL in at app
+// startup — lets Settings > Server Connection change which backend the app
+// talks to (LAN IP change, tunnel URL, etc.) without a rebuild/restart.
 apiClient.interceptors.request.use(async (config) => {
+  config.baseURL = getActiveApiBaseUrl();
   const token = await SecureStore.getItemAsync('metizo-access-token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

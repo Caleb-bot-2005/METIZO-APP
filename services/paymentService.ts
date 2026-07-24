@@ -6,7 +6,8 @@ import { EscrowRecord, PaystackInitResult, PaystackPurpose, PaystackVerifyResult
 type InitializeInput =
   | { purpose: 'ESCROW'; requestId: string }
   | { purpose: 'WALLET_TOPUP'; amount: number }
-  | { purpose: 'MARKETPLACE_ORDER'; amount: number };
+  | { purpose: 'MARKETPLACE_ORDER'; amount: number }
+  | { purpose: 'SUBSCRIPTION'; amount: number };
 
 // Escrow is created automatically server-side when a bid is accepted (see
 // authService's note on the real accept-bid flow) — this screen only reads

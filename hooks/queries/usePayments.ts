@@ -16,6 +16,7 @@ export function useInitializePaystack() {
         | { purpose: 'ESCROW'; requestId: string }
         | { purpose: 'WALLET_TOPUP'; amount: number }
         | { purpose: 'MARKETPLACE_ORDER'; amount: number }
+        | { purpose: 'SUBSCRIPTION'; amount: number }
     ) => paymentService.initializePaystack(input),
   });
 }

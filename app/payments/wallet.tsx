@@ -11,6 +11,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { useToast } from '@/components/ui/Toast';
 import { usePaymentStore } from '@/store/paymentStore';
 import { useInitializePaystack } from '@/hooks/queries/usePayments';
+import { useWalletBalance } from '@/hooks/queries/useWallet';
 import { formatCurrency } from '@/utils/format';
 import { gradients, ThemeColors } from '@/theme/colors';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -18,7 +19,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 const topUpAmounts = [50, 100, 200, 500];
 
 export default function WalletScreen() {
-  const walletBalance = usePaymentStore((s) => s.walletBalance);
+  const { data: walletBalance = 0 } = useWalletBalance();
   const transactions = usePaymentStore((s) => s.transactions);
   const initializePaystack = useInitializePaystack();
   const [modalVisible, setModalVisible] = useState(false);
@@ -124,7 +125,7 @@ export default function WalletScreen() {
         </View>
 
         <Text style={styles.sourceTitle}>
-          You'll choose card, mobile money, or bank transfer on Paystack's secure checkout next.
+          You&apos;ll choose card, mobile money, or bank transfer on Paystack&apos;s secure checkout next.
         </Text>
 
         <Button

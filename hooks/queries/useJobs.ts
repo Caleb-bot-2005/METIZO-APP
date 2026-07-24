@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { jobService } from '@/services/jobService';
+import { reviewService } from '@/services/reviewService';
 import { Job, ProgressStage } from '@/types/job';
 
 // Polls so status/progress changes (customer confirms, artisan updates
@@ -55,5 +56,22 @@ export function useConfirmCompletion() {
   return useMutation({
     mutationFn: (id: string) => jobService.confirmCompletion(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+  });
+}
+
+// Customer-side: permanently remove a cancelled job from history.
+export function useDeleteJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => jobService.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['jobs'] }),
+  });
+}
+
+// Customer-side: rate a completed job — feeds the artisan's trust score.
+export function useLeaveReview() {
+  return useMutation({
+    mutationFn: ({ id, rating, comment }: { id: string; rating: number; comment: string }) =>
+      reviewService.leaveReview(id, rating, comment),
   });
 }

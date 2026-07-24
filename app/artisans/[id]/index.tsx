@@ -14,6 +14,7 @@ import {
 import { BackButton } from '@/components/ui/BackButton';
 import { Button } from '@/components/ui/Button';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
+import { Avatar } from '@/components/ui/Avatar';
 import { ReviewCard } from '@/components/features/ReviewCard';
 import { BeforeAfterSlider } from '@/components/features/BeforeAfterSlider';
 import { SkeletonCard } from '@/components/ui/Skeleton';
@@ -53,10 +54,9 @@ export default function ArtisanProfileScreen() {
             <BackButton />
           </View>
           <View style={{ position: 'absolute', bottom: -40, left: 24 }}>
-            <Image
-              source={{ uri: artisan.avatarUrl }}
-              style={{ width: 88, height: 88, borderRadius: 44, borderWidth: 4, borderColor: colors.background }}
-            />
+            <View style={{ borderWidth: 4, borderColor: colors.background, borderRadius: 48 }}>
+              <Avatar name={artisan.name} uri={artisan.avatarUrl} size={88} />
+            </View>
           </View>
         </View>
 

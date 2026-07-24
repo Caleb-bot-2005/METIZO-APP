@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Image } from 'expo-image';
 import { Star, ThumbsUp } from 'lucide-react-native';
+import { Avatar } from '@/components/ui/Avatar';
 import { Review } from '@/types/artisan';
 import { ThemeColors } from '@/theme/colors';
 import { useThemeColors } from '@/hooks/use-theme-colors';
@@ -13,7 +13,7 @@ export function ReviewCard({ review }: { review: Review }) {
   return (
     <View style={styles.card}>
       <View style={styles.row}>
-        <Image source={{ uri: review.customerAvatarUrl }} style={{ width: 40, height: 40, borderRadius: 20 }} />
+        <Avatar name={review.customerName} uri={review.customerAvatarUrl} size={40} />
         <View style={{ flex: 1 }}>
           <Text numberOfLines={1} style={styles.name}>{review.customerName}</Text>
           <Text numberOfLines={1} style={styles.date}>{review.createdAt}</Text>

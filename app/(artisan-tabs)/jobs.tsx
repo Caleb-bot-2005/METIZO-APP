@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { Briefcase, Gavel } from 'lucide-react-native';
 import { Card } from '@/components/ui/Card';
 import { AnimatedPressable } from '@/components/ui/AnimatedPressable';
@@ -72,11 +73,16 @@ export default function ArtisanWorkScreen() {
     if (item.status === 'in_progress') {
       const action = nextProgressAction[item.progressStage ?? 'started'];
       if (action) {
+        // "Mark Work Complete" needs proof photos first — routes to a dedicated
+        // screen instead of firing the progress update directly (see
+        // app/jobs/[id]/complete.tsx). Other checkpoints have no such
+        // requirement and update in place.
+        const onPress =
+          action.stage === 'done'
+            ? () => router.push(`/jobs/${item.id}/complete`)
+            : () => handleProgress(item.id, action.stage);
         return (
-          <AnimatedPressable
-            onPress={() => handleProgress(item.id, action.stage)}
-            disabled={updateProgress.isPending}
-            style={styles.startButton}>
+          <AnimatedPressable onPress={onPress} disabled={updateProgress.isPending} style={styles.startButton}>
             <Text style={styles.startButtonLabel}>{action.label}</Text>
           </AnimatedPressable>
         );

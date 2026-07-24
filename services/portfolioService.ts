@@ -1,6 +1,7 @@
 import { apiClient } from './api/client';
 import { mockDelay } from './mockDelay';
 import { env } from '@/config/env';
+import { getActiveApiOrigin } from '@/store/apiConfigStore';
 import { PortfolioPhoto } from '@/types/artisan';
 
 // Backend DTO from PortfolioPhotoDtos.Response.
@@ -15,7 +16,7 @@ interface BackendPortfolioPhoto {
 function toPortfolioPhoto(p: BackendPortfolioPhoto): PortfolioPhoto {
   return {
     id: String(p.id),
-    url: `${env.apiOrigin}${p.url}`,
+    url: `${getActiveApiOrigin()}${p.url}`,
     caption: p.caption ?? undefined,
     createdAt: p.createdAt,
   };
