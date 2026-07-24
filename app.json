@@ -15,8 +15,7 @@
         "NSLocationWhenInUseUsageDescription": "METIZO uses your location to find trusted artisans near you and to share your address with the professional you hire.",
         "NSCameraUsageDescription": "METIZO uses your camera to let you photograph job issues and share before/after results.",
         "NSPhotoLibraryUsageDescription": "METIZO needs access to your photos so you can attach images to a job request.",
-        "NSMicrophoneUsageDescription": "METIZO uses your microphone to let you describe a job by speaking instead of typing.",
-        "NSSpeechRecognitionUsageDescription": "METIZO uses speech recognition to turn your voice into job description text.",
+        "NSMicrophoneUsageDescription": "METIZO uses your microphone to let you record voice messages in chat.",
         "NSFaceIDUsageDescription": "METIZO uses Face ID to let you log in quickly and securely."
       }
     },
