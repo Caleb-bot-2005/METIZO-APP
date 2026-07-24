@@ -16,6 +16,20 @@ public class BidDtos {
             String message
     ) {}
 
+    /** Artisan revises the amount on their own still-pending bid. */
+    public record ReviseRequest(
+            @NotNull @Positive BigDecimal amount
+    ) {}
+
+    /**
+     * Optional final price when accepting — lets a customer lock in whatever was
+     * actually negotiated (e.g. in chat) instead of always the bid's original amount.
+     * Null/omitted falls back to the bid's own amount.
+     */
+    public record AcceptRequest(
+            BigDecimal agreedAmount
+    ) {}
+
     public record Response(
             Long id,
             Long serviceRequestId,

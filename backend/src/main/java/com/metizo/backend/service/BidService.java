@@ -7,6 +7,7 @@ import com.metizo.backend.domain.Role;
 import com.metizo.backend.domain.ServiceRequest;
 import com.metizo.backend.domain.User;
 import com.metizo.backend.dto.BidDtos.CreateRequest;
+import com.metizo.backend.dto.BidDtos.ReviseRequest;
 import com.metizo.backend.dto.BidDtos.Response;
 import com.metizo.backend.exception.BadRequestException;
 import com.metizo.backend.exception.ResourceNotFoundException;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -68,12 +70,36 @@ public class BidService {
                 .stream().map(Response::from).toList();
     }
 
+    /** Artisan revises the amount on their own still-pending bid (e.g. after negotiating). */
+    @Transactional
+    public Response reviseBid(Long bidId, ReviseRequest request) {
+        Bid bid = bidRepository.findById(bidId)
+                .orElseThrow(() -> new ResourceNotFoundException("Bid not found: " + bidId));
+
+        User artisan = currentUserService.require();
+        if (!bid.getArtisan().getId().equals(artisan.getId())) {
+            throw new BadRequestException("Only the artisan who placed this bid can revise it");
+        }
+        if (bid.getStatus() != BidStatus.PENDING) {
+            throw new BadRequestException("Only a pending bid can be revised");
+        }
+        if (bid.getServiceRequest().getStatus() != RequestStatus.OPEN) {
+            throw new BadRequestException("This request is no longer accepting bid changes");
+        }
+
+        bid.setAmount(request.amount());
+        return Response.from(bid);
+    }
+
     /**
      * Customer accepts a bid: assigns the artisan, rejects the rest, and locks
-     * the agreed amount in escrow.
+     * the agreed amount in escrow. If agreedAmount is given (e.g. a price reached
+     * through negotiation), that's what gets locked in instead of the bid's own
+     * amount — the bid record itself is left untouched as an honest history of
+     * what was originally quoted.
      */
     @Transactional
-    public Response acceptBid(Long bidId) {
+    public Response acceptBid(Long bidId, BigDecimal agreedAmount) {
         Bid bid = bidRepository.findById(bidId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bid not found: " + bidId));
         ServiceRequest sr = bid.getServiceRequest();
@@ -86,6 +112,8 @@ public class BidService {
             throw new BadRequestException("This request already has an accepted bid");
         }
 
+        BigDecimal finalAmount = (agreedAmount != null && agreedAmount.signum() > 0) ? agreedAmount : bid.getAmount();
+
         // Accept the chosen bid, reject the competitors.
         bid.setStatus(BidStatus.ACCEPTED);
         for (Bid other : bidRepository.findByServiceRequestIdOrderByAmountAsc(sr.getId())) {
@@ -95,10 +123,10 @@ public class BidService {
         }
 
         sr.setAssignedArtisan(bid.getArtisan());
-        sr.setAgreedAmount(bid.getAmount());
+        sr.setAgreedAmount(finalAmount);
         sr.setStatus(RequestStatus.ASSIGNED);
 
-        escrowService.hold(sr, bid.getArtisan(), bid.getAmount());
+        escrowService.hold(sr, bid.getArtisan(), finalAmount);
 
         return Response.from(bid);
     }

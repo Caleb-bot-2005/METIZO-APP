@@ -6,9 +6,11 @@ import com.metizo.backend.service.ArtisanService;
 import com.metizo.backend.service.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/artisans")
@@ -43,5 +45,12 @@ public class ArtisanController {
     @PutMapping("/me")
     public ArtisanDtos.Response updateMe(@Valid @RequestBody ArtisanDtos.UpdateRequest request) {
         return artisanService.updateMyProfile(request);
+    }
+
+    /** Admin marks an artisan's identity/business as verified after checking their documents. */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{userId}/verify")
+    public ArtisanDtos.Response setVerified(@PathVariable Long userId, @RequestBody Map<String, Boolean> body) {
+        return artisanService.setVerified(userId, Boolean.TRUE.equals(body.get("verified")));
     }
 }

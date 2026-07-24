@@ -28,11 +28,47 @@ public class AuthDtos {
             @NotBlank String password
     ) {}
 
+    public record ForgotPasswordRequest(
+            @Email @NotBlank String email
+    ) {}
+
+    /**
+     * devCode is only ever non-null when no email provider is configured (see
+     * EmailService.isConfigured) — a local-dev convenience so the app can skip
+     * straight to the new-password screen instead of the user hunting through
+     * server logs. Once a real provider is configured this is always null, for
+     * every email (registered or not), preserving forgot-password's existing
+     * "can't enumerate accounts" property.
+     */
+    public record ForgotPasswordResponse(String devCode) {}
+
+    public record ResetPasswordRequest(
+            @Email @NotBlank String email,
+            @NotBlank String code,
+            @NotBlank @Size(min = 6, message = "password must be at least 6 characters") String newPassword
+    ) {}
+
+    public record VerifyEmailRequest(
+            @Email @NotBlank String email,
+            @NotBlank String code
+    ) {}
+
+    public record ResendVerificationRequest(
+            @Email @NotBlank String email
+    ) {}
+
+    /**
+     * devVerificationCode mirrors ForgotPasswordResponse.devCode: non-null only
+     * when no email provider is configured, so the app can verify the account
+     * automatically instead of stranding the user on an OTP screen for a code
+     * that was never actually sent.
+     */
     public record AuthResponse(
             String token,
             Long userId,
             String fullName,
             String email,
-            Role role
+            Role role,
+            String devVerificationCode
     ) {}
 }

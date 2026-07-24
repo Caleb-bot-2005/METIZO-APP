@@ -9,6 +9,7 @@ import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 @Entity
@@ -39,6 +40,23 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role;
+
+    /** Hashed one-time password-reset code + expiry; both null when no reset is pending. */
+    private String resetCodeHash;
+    private Instant resetCodeExpiresAt;
+
+    /** Hashed one-time email-verification code + expiry, separate from the reset code above. */
+    private String verificationCodeHash;
+    private Instant verificationCodeExpiresAt;
+
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default false not null")
+    private boolean emailVerified = false;
+
+    /** Real money, credited only after a verified Paystack top-up (see PaystackController.verify). */
+    @Builder.Default
+    @Column(nullable = false)
+    private BigDecimal walletBalance = BigDecimal.ZERO;
 
     /** Optional profile, populated only for artisans. */
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

@@ -42,6 +42,14 @@ public class ArtisanService {
         return Response.from(getProfile(userId));
     }
 
+    /** Admin marks (or unmarks) an artisan as identity/business-verified. */
+    @Transactional
+    public Response setVerified(Long userId, boolean verified) {
+        ArtisanProfile profile = getProfile(userId);
+        profile.setVerified(verified);
+        return Response.from(profile);
+    }
+
     @Transactional
     public Response updateMyProfile(UpdateRequest request) {
         User user = currentUserService.require();
@@ -52,6 +60,8 @@ public class ArtisanService {
         if (request.category() != null) profile.setCategory(request.category());
         if (request.bio() != null) profile.setBio(request.bio());
         if (request.location() != null) profile.setLocation(request.location());
+        if (request.latitude() != null) profile.setLatitude(request.latitude());
+        if (request.longitude() != null) profile.setLongitude(request.longitude());
         if (request.available() != null) profile.setAvailable(request.available());
         return Response.from(profile);
     }

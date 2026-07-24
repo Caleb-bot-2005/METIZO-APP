@@ -49,6 +49,17 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Versioned schema migrations (see src/main/resources/db/migration) —
+             the real source of truth for the schema; Hibernate is validate-only. -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
         <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

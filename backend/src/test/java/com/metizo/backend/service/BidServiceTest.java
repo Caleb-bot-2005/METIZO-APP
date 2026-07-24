@@ -92,7 +92,7 @@ class BidServiceTest {
         when(bidRepository.findByServiceRequestIdOrderByAmountAsc(10L))
                 .thenReturn(List.of(winning, other));
 
-        bidService.acceptBid(100L);
+        bidService.acceptBid(100L, null);
 
         assertThat(winning.getStatus()).isEqualTo(BidStatus.ACCEPTED);
         assertThat(other.getStatus()).isEqualTo(BidStatus.REJECTED);
@@ -114,7 +114,7 @@ class BidServiceTest {
         when(bidRepository.findById(100L)).thenReturn(Optional.of(bid));
         when(currentUserService.require()).thenReturn(stranger);
 
-        assertThatThrownBy(() -> bidService.acceptBid(100L))
+        assertThatThrownBy(() -> bidService.acceptBid(100L, null))
                 .isInstanceOf(BadRequestException.class);
     }
 }

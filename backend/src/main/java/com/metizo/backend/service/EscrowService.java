@@ -77,4 +77,19 @@ public class EscrowService {
         return escrowRepository.findByServiceRequestId(serviceRequestId)
                 .orElseThrow(() -> new ResourceNotFoundException("No escrow for request " + serviceRequestId));
     }
+
+    /**
+     * Removes an escrow hold that was never actually paid (emergency dispatch's
+     * "find another artisan" flow un-assigns before the customer pays). Refuses
+     * to touch anything once real money has been collected via Paystack.
+     */
+    @Transactional
+    public void dropUnpaidHold(Long serviceRequestId) {
+        escrowRepository.findByServiceRequestId(serviceRequestId).ifPresent(tx -> {
+            if (tx.getPaidAt() != null) {
+                throw new BadRequestException("Cannot drop an escrow hold that has already been paid");
+            }
+            escrowRepository.delete(tx);
+        });
+    }
 }

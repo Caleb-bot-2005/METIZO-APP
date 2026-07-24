@@ -41,7 +41,11 @@ public class ServiceRequest {
 
     private String location;
 
-    /** Optional budget hint shown to bidding artisans. */
+    /** Real coordinates (GPS or manual pin) — needed for emergency dispatch's proximity matching. */
+    private Double latitude;
+    private Double longitude;
+
+    /** Optional budget hint shown to bidding artisans; for emergency requests, the held escrow estimate. */
     private BigDecimal budget;
 
     @Builder.Default
@@ -51,6 +55,10 @@ public class ServiceRequest {
     @Column(nullable = false)
     @Builder.Default
     private RequestStatus status = RequestStatus.OPEN;
+
+    /** Fine-grained work checkpoint while IN_PROGRESS — null before work starts. */
+    @Enumerated(EnumType.STRING)
+    private ProgressStage progressStage;
 
     /** The artisan whose bid was accepted (null until assigned). */
     @ManyToOne(fetch = FetchType.LAZY)

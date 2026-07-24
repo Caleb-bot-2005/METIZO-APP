@@ -18,7 +18,8 @@ public class EscrowDtos {
             BigDecimal artisanPayout,
             EscrowStatus status,
             Instant createdAt,
-            Instant settledAt
+            Instant settledAt,
+            Instant paidAt
     ) {
         public static Response from(EscrowTransaction tx) {
             return new Response(
@@ -31,7 +32,8 @@ public class EscrowDtos {
                     tx.getArtisanPayout(),
                     tx.getStatus(),
                     tx.getCreatedAt(),
-                    tx.getSettledAt()
+                    tx.getSettledAt(),
+                    tx.getPaidAt()
             );
         }
     }

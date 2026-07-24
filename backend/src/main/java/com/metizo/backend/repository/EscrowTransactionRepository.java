@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface EscrowTransactionRepository extends JpaRepository<EscrowTransaction, Long> {
     Optional<EscrowTransaction> findByServiceRequestId(Long serviceRequestId);
+    Optional<EscrowTransaction> findByPaystackReference(String paystackReference);
 }

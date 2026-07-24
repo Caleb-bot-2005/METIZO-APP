@@ -32,8 +32,21 @@ public class ArtisanProfile {
 
     private String location;
 
+    /** Real coordinates for distance-based "nearby artisans" sorting — null until the artisan sets it. */
+    private Double latitude;
+    private Double longitude;
+
     @Builder.Default
     private boolean available = true;
+
+    /**
+     * Identity/business verification, distinct from trust score — an admin marks
+     * this true after checking ID/business documents. Independent of job history
+     * so a legitimately verified artisan can show it from day one, before any jobs.
+     */
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default false not null")
+    private boolean verified = false;
 
     // --- Trust score inputs ---
 

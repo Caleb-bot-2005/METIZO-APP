@@ -13,6 +13,7 @@ target/
 # Logs / env
 *.log
 .env
+application-local.yml
 
 # Uploaded work photos (runtime data, not source)
 uploads/

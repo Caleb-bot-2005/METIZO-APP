@@ -58,4 +58,10 @@ public class EscrowTransaction {
     private Instant createdAt;
 
     private Instant settledAt;
+
+    /** Reference of the Paystack transaction initialized to collect this amount. */
+    private String paystackReference;
+
+    /** Set once Paystack confirms the charge succeeded — the real "money moved" signal. */
+    private Instant paidAt;
 }

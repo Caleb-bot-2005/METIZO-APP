@@ -18,6 +18,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -48,13 +49,32 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/artisans/**").permitAll()
                         .requestMatchers("/api/pricing/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/photos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/portfolio-photos/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // Without this, Spring Security's default for a rejected/missing
+                // token on a protected endpoint is 403 — indistinguishable from a
+                // real "you're logged in but not allowed" case. The app's client
+                // only treats 401 as "your session is dead, log in again" (see
+                // services/api/client.ts's response interceptor), so a stale or
+                // invalid token (expired, or a since-deleted account) must come
+                // back as 401 or the app gets stuck logged-in-but-broken forever.
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint()));
 
         return http.build();
+    }
+
+    @Bean
+    public AuthenticationEntryPoint authenticationEntryPoint() {
+        return (request, response, authException) -> {
+            response.setStatus(401);
+            response.setContentType("application/json");
+            response.getWriter().write(
+                    "{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"Authentication required\"}");
+        };
     }
 
     @Bean

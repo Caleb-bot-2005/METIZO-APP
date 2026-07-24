@@ -2,6 +2,7 @@ package com.metizo.backend.controller;
 
 import com.metizo.backend.dto.BidDtos;
 import com.metizo.backend.dto.ServiceRequestDtos.CreateRequest;
+import com.metizo.backend.dto.ServiceRequestDtos.ProgressRequest;
 import com.metizo.backend.dto.ServiceRequestDtos.Response;
 import com.metizo.backend.service.BidService;
 import com.metizo.backend.service.ServiceRequestService;
@@ -61,6 +62,12 @@ public class ServiceRequestController {
         return serviceRequestService.markInProgress(id);
     }
 
+    /** Artisan reports a work checkpoint (materials purchased / almost done / done). */
+    @PostMapping("/{id}/progress")
+    public Response updateProgress(@PathVariable Long id, @Valid @RequestBody ProgressRequest request) {
+        return serviceRequestService.updateProgress(id, request.stage());
+    }
+
     @PostMapping("/{id}/confirm")
     public Response confirm(@PathVariable Long id) {
         return serviceRequestService.confirmCompletion(id);
@@ -69,5 +76,11 @@ public class ServiceRequestController {
     @PostMapping("/{id}/cancel")
     public Response cancel(@PathVariable Long id) {
         return serviceRequestService.cancel(id);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        serviceRequestService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

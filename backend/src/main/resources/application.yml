@@ -8,13 +8,25 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      # Flyway (below) owns the schema now; Hibernate only checks at boot that
+      # the entities still match it, and fails fast on drift instead of
+      # silently altering tables.
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
     show-sql: false
+  flyway:
+    # This DB's tables were originally created by Hibernate's ddl-auto: update.
+    # baseline-on-migrate lets Flyway adopt it without re-running V1's CREATE
+    # TABLEs against tables that already exist — it just records V1 as already
+    # applied. A fresh/empty database (new env, CI, local dev) is unaffected by
+    # baselining and runs V1 for real.
+    baseline-on-migrate: true
+    baseline-version: 1
+    baseline-description: "Schema as created by Hibernate ddl-auto before Flyway adoption"
   servlet:
     multipart:
       max-file-size: 5MB
@@ -24,6 +36,19 @@ server:
   port: ${SERVER_PORT:8080}
 
 metizo:
+  resend:
+    # Used to email password-reset codes. Sandbox sender (onboarding@resend.dev)
+    # works immediately with any Resend account, no domain verification needed.
+    api-key: ${RESEND_API_KEY:}
+    from: ${RESEND_FROM:METIZO <onboarding@resend.dev>}
+  paystack:
+    # Test/live secret key from dashboard.paystack.com/#/settings/developer.
+    # Server-side only — never sent to the mobile app.
+    secret-key: ${PAYSTACK_SECRET_KEY:}
+    # Where Paystack's hosted checkout redirects after the customer finishes.
+    # We don't run a webserver page there — the mobile app's WebView watches for
+    # this URL to know the checkout is done, then verifies the reference itself.
+    callback-url: ${PAYSTACK_CALLBACK_URL:https://standard.paystack.co/close}
   security:
     jwt:
       # Base64-encoded 256-bit secret. Override in production via env var.
